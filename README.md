@@ -9,14 +9,12 @@
 - Real-time updates from verified sports data APIs  
 
 ## 🧠 Tech Stack
-- **Frontend:** React, TailwindCSS, Framer Motion  
-- **Backend:** Node.js, Express  
-- **Database:** PostgreSQL  
-- **Data Analysis:** Python, Pandas, NumPy, Scikit-learn  
-- **APIs:** Football-data.org, Transfermarkt dataset integration  
+- **Frontend:** HTML, CSS, JS
+- **Backend:** Python  
+- **Data Analysis:** Python, Pandas, NumPy  
 
-## 👥 Team
-Developed by a multidisciplinary team of data scientists, software engineers, and football enthusiasts passionate about bridging performance analytics and talent discovery.
+## 👥 Founder
+Developed by a solo data scientist, software engineer, and football enthusiast passionate about performance analytics and talent discovery.
 
 ## 🌍 Vision
 To redefine modern scouting by combining transparency, technology, and predictive intelligence—making football analysis more accessible and insightful for all stakeholders.
