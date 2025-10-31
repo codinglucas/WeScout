@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="WeScout - Dashboard">
+    <title>WeScout - Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2 class="sidebar-logo">Dashboard</h2>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="dashboard.html" class="nav-item active">
+                <span class="nav-icon">🔍</span>
+                <span class="nav-text">Search</span>
+            </a>
+            <a href="#lineups" class="nav-item">
+                <span class="nav-icon">⚽</span>
+                <span class="nav-text">Line-ups</span>
+            </a>
+            <a href="lists.html" class="nav-item">
+                <span class="nav-icon">📋</span>
+                <span class="nav-text">Lists</span>
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <a href="index.html" class="logo-link">WeScout</a>
+            <div class="user-menu">
+                <button class="user-btn">
+                    <span class="user-avatar">👤</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Search Section -->
+        <section class="search-section">
+            <div class="search-container">
+                <div class="search-background">
+                    <div class="gradient-orb orb-1"></div>
+                    <div class="gradient-orb orb-2"></div>
+                </div>
+
+                <form class="search-form" id="searchForm">
+                    <!-- Age Filters -->
+                    <div class="filter-row">
+                        <div class="form-group">
+                            <label for="minAge" class="form-label">Min Age</label>
+                            <input 
+                                type="number" 
+                                id="minAge" 
+                                name="minAge" 
+                                class="form-input"
+                                placeholder="16"
+                                min="16"
+                                max="45"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="maxAge" class="form-label">Max Age</label>
+                            <input 
+                                type="number" 
+                                id="maxAge" 
+                                name="maxAge" 
+                                class="form-input"
+                                placeholder="35"
+                                min="16"
+                                max="45"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Value Filters -->
+                    <div class="filter-row">
+                        <div class="form-group">
+                            <label for="minValue" class="form-label">Min Value (in Euros)</label>
+                            <input 
+                                type="number" 
+                                id="minValue" 
+                                name="minValue" 
+                                class="form-input"
+                                placeholder="100000"
+                                min="0"
+                                step="100000"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="maxValue" class="form-label">Max Value (in Euros)</label>
+                            <input 
+                                type="number" 
+                                id="maxValue" 
+                                name="maxValue" 
+                                class="form-input"
+                                placeholder="10000000"
+                                min="0"
+                                step="100000"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Position Dropdown -->
+                    <div class="filter-row-single">
+                        <div class="form-group form-group-select">
+                            <label for="position" class="form-label">Position</label>
+                            <div class="select-wrapper">
+                                <select id="position" name="position" class="form-select">
+                                    <option value="">Select Position</option>
+                                    <option value="gk">GK - Goalkeeper</option>
+                                    <option value="sweeper">SWEEPER - Sweeper</option>
+                                    <option value="cb">CB - Center Back</option>
+                                    <option value="lb">LB - Left Back</option>
+                                    <option value="rb">RB - Right Back</option>
+                                    <option value="cdm">CDM - Defensive Midfielder</option>
+                                    <option value="cm">CM - Central Midfielder</option>
+                                    <option value="rm">RM - Right Midfielder</option>
+                                    <option value="lm">LM - Left Midfielder</option>
+                                    <option value="cam">CAM - Attacking Midfielder</option>
+                                    <option value="lw">LW - Left Wing</option>
+                                    <option value="rw">RW - Right Wing</option>
+                                    <option value="st">ST - Striker</option>
+                                    <option value="cf">CF - Center Forward</option>
+                                </select>
+                                <span class="select-arrow">▼</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn-go">
+                        GO!
+                    </button>
+
+                    <!-- Stats Filter Button -->
+                    <button type="button" class="btn-stats-filter" id="statsFilterBtn">
+                        📊 Advanced Stats Filter
+                    </button>
+                </form>
+
+                <!-- Stats Filter Modal -->
+                <div class="stats-filter-modal" id="statsFilterModal">
+                    <div class="stats-filter-content">
+                        <div class="stats-filter-header">
+                            <h3>Select Statistics to Filter</h3>
+                            <button class="close-modal" id="closeStatsModal">✕</button>
+                        </div>
+                        <div class="stats-filter-body">
+                            <p class="stats-description">Choose the stats you want to prioritize in your search:</p>
+                            
+                            <div class="stats-grid">
+                                <!-- Absolute Values -->
+                                <div class="stat-category">
+                                    <h4 class="category-title">📈 Absolute Values</h4>
+                                    <label class="stat-checkbox">
+                                        <input type="checkbox" name="stat" value="goals" checked>
+                                        <span>Goals</span>
+                                    </label>
+                                    <label class="stat-checkbox">
+                                        <input type="checkbox" name="stat" value="assists" checked>
+                                        <span>Assists</span>
+                                    </label>
+                                    <label class="stat-checkbox">
+                                        <input type="checkbox" name="stat" value="keyPasses" checked>
+                                        <span>Key Passes</span>
+                                    </label>
+                                    <label class="stat-checkbox">
+                                        <input type="checkbox" name="stat" value="bigChancesCreated">
+                                        <span>Big Chances Created</span>
+                                    </label>
+                                </div>
+
+                                <!-- Per 90 Stats -->
+                                <div class="stat-category">
+                                    <h4 class="category-title">⏱️ Per 90 Minutes</h4>
+                                    <label class="stat-checkbox">
+                                        <input type="checkbox" name="stat" value="tacklesPer90">
+                                        <span>Tackles per 90</span>
+                                    </label>
+                                    <label class="stat-checkbox">
+                                        <input type="checkbox" name="stat" value="interceptionsPer90">
+                                        <span>Interceptions per 90</span>
+                                    </label>
+                                    <label class="stat-checkbox">
+                                        <input type="checkbox" name="stat" value="dribbledPastPer90">
+                                        <span>Dribbled Past per 90</span>
+                                    </label>
+                                </div>
+
+                                <!-- Percentage Stats -->
+                                <div class="stat-category">
+                                    <h4 class="category-title">📊 Percentages</h4>
+                                    <label class="stat-checkbox">
+                                        <input type="checkbox" name="stat" value="passCompletion">
+                                        <span>Pass Completion %</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="stats-filter-footer">
+                                <button type="button" class="btn-apply-stats" id="applyStatsBtn">
+                                    Apply Filters
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Section (Initially Hidden) -->
+                <div class="results-section" id="resultsSection">
+                    <h3 class="results-title">Search Results</h3>
+                    <div class="results-grid" id="resultsGrid">
+                        <!-- Results will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Particles Background -->
+    <div class="particles-container" id="particles"></div>
+
+    <script src="script.js"></script>
+    <script src="api-service.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+</html>

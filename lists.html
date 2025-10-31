@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="WeScout - Lists">
+    <title>WeScout - Lists</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="lists.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Main Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2 class="sidebar-logo">Dashboard</h2>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="dashboard.html" class="nav-item">
+                <span class="nav-icon">🔍</span>
+                <span class="nav-text">Search</span>
+            </a>
+            <a href="#lineups" class="nav-item">
+                <span class="nav-icon">⚽</span>
+                <span class="nav-text">Line-ups</span>
+            </a>
+            <a href="lists.html" class="nav-item active">
+                <span class="nav-icon">📋</span>
+                <span class="nav-text">Lists</span>
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <a href="index.html" class="logo-link">WeScout</a>
+            <div class="user-menu">
+                <button class="user-btn">
+                    <span class="user-avatar">👤</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Lists Section -->
+        <section class="lists-section">
+            <div class="lists-container">
+                <!-- Lists Sidebar -->
+                <aside class="lists-sidebar">
+                    <div class="lists-sidebar-header">
+                        <h2>My Lists</h2>
+                        <button class="btn-create-list" id="createListBtn">
+                            <span>+</span> New List
+                        </button>
+                    </div>
+                    <div class="lists-nav" id="listsNav">
+                        <!-- Lists will be populated here -->
+                    </div>
+                </aside>
+
+                <!-- Main Lists Content -->
+                <div class="lists-main">
+                    <div class="lists-header">
+                        <div class="list-title-section">
+                            <h1 id="currentListName">Select or create a list</h1>
+                            <p id="currentListCount" class="list-count">0 players</p>
+                        </div>
+                        <div class="list-actions">
+                            <button class="btn-rename-list" id="renameListBtn" style="display: none;">
+                                ✏️ Rename
+                            </button>
+                            <button class="btn-delete-list" id="deleteListBtn" style="display: none;">
+                                🗑️ Delete List
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="lists-content" id="listsContent">
+                        <!-- Empty state -->
+                        <div class="empty-state" id="emptyState">
+                            <div class="empty-state-icon">📋</div>
+                            <h3>No list selected</h3>
+                            <p>Create a new list or select an existing one to view players</p>
+                        </div>
+
+                        <!-- Players grid -->
+                        <div class="players-grid" id="playersGrid" style="display: none;">
+                            <!-- Player cards will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Create List Modal -->
+    <div class="modal" id="createListModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create New List</h3>
+                <button class="close-modal" id="closeCreateModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <label for="newListName" class="modal-label">List Name</label>
+                <input 
+                    type="text" 
+                    id="newListName" 
+                    class="modal-input" 
+                    placeholder="e.g., Top Strikers 2024"
+                    maxlength="50"
+                >
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" id="cancelCreateBtn">Cancel</button>
+                <button class="btn-confirm" id="confirmCreateBtn">Create List</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rename List Modal -->
+    <div class="modal" id="renameListModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Rename List</h3>
+                <button class="close-modal" id="closeRenameModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <label for="renameListName" class="modal-label">New List Name</label>
+                <input 
+                    type="text" 
+                    id="renameListName" 
+                    class="modal-input" 
+                    placeholder="Enter new name"
+                    maxlength="50"
+                >
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" id="cancelRenameBtn">Cancel</button>
+                <button class="btn-confirm" id="confirmRenameBtn">Rename</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal" id="deleteConfirmModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Delete List</h3>
+                <button class="close-modal" id="closeDeleteModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this list? This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" id="cancelDeleteBtn">Cancel</button>
+                <button class="btn-confirm btn-danger" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Particles Background -->
+    <div class="particles-container" id="particles"></div>
+
+    <script src="script.js"></script>
+    <script src="lists.js"></script>
+</body>
+</html>
+
