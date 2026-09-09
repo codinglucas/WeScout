@@ -11,8 +11,8 @@ import json
 players = get_transfermarkt_player_list()
 
 # helper methods
-def get_match(nav, player_name):
-    id_url = f"https://www.sofascore.com/api/v1/search/all?q={player_name}"
+def get_match(nav, player):
+    id_url = f"https://www.sofascore.com/api/v1/search/all?q={player.name}"
     nav.get(id_url)
 
     text = nav.find_element("tag name", "body").text
@@ -21,6 +21,18 @@ def get_match(nav, player_name):
         r'entity\s+id\s+(\d+)',
         text
     )
+
+
+    if match == None:
+        id_url = f"https://www.sofascore.com/api/v1/search/all?q={player.name.split()[-1]} {player.club.split()[0]}"
+        nav.get(id_url)
+
+        text = nav.find_element("tag name", "body").text
+
+        match = re.search(
+                r'entity\s+id\s+(\d+)',
+                text
+            )
 
     return match
 
@@ -50,6 +62,8 @@ def fetch_json(nav, url):
         .catch(err => callback({status: "error", body: String(err)}));
     """
     result = nav.execute_async_script(script, url)
+    print("Raw result")
+    print(result)
     if result["status"] != "ok":
         return None
     try:
@@ -61,8 +75,8 @@ def fetch_json(nav, url):
 def get_recent_seasons(nav, player_id, limit=3):
     url = f"https://api.sofascore.com/api/v1/player/{player_id}/statistics/seasons"
 
-    data = fetch_json(nav, url)
-
+    data = fetch_json(nav, url) #data = dict of API
+    nav.get(url)
     if not data:
         return[]
 
@@ -95,7 +109,7 @@ def get_player_id(nav, players):
 
     for player in players:
 
-        match = get_match(nav, player.name)
+        match = get_match(nav, player)
 
         if match:
             player.sofascore_id = match.group(1)
@@ -103,11 +117,12 @@ def get_player_id(nav, players):
 
         else:
             print(player.name, "-> ID not found")
-        break
 
 
 
 def get_players_stats(nav, players):
+
+    print("im being called")
 
     STAT_TO_ATTR = {
         "rating": "rating",
@@ -125,7 +140,7 @@ def get_players_stats(nav, players):
     }
 
     for player in players:
-
+        #print("Player name ", player.name, "player id", player.sofascore_id)
         seasons = get_recent_seasons(nav, player.sofascore_id, limit=3)
         count = 0
         for tournament_id, season_id in seasons:
@@ -133,14 +148,16 @@ def get_players_stats(nav, players):
             print("Season_id", season_id)
             print(f"Season {count}")
             count += 1
-            season_stats = get_season_stats(nav, player.sofascore_id, tournament_id, season_id)
+            player_season_stats = get_season_stats(nav, player.sofascore_id, tournament_id, season_id)
 
-            for x in STAT_TO_ATTR.keys():
-                if x in season_stats.keys():
-                    print(season_stats[x])
+            print(player.name, "stats: ")
+            player_season_stats
+
+            for key, attribute in STAT_TO_ATTR.keys():
+                if key in player_season_stats.keys(): #se o player tiver esse stats
+                    setattr(player, attribute, player_season_stats.get(key))
                 else:
-                    print(x, "Not found")
-        break
+                    print(player.name, key, ": ", "Not found")
 
 
 
@@ -151,9 +168,9 @@ if __name__ == "__main__":
     nav = webdriver.Firefox()
 
     get_player_id(nav, players)
-
-    nav.get(f"https://www.sofascore.com/player/x/{players[0].sofascore_id}")
-
     get_players_stats(nav, players)
 
-   
+    for player in players:
+        if player == players[5]:
+            break
+        print(vars(player))
