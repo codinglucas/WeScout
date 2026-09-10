@@ -2,6 +2,7 @@ from transfermarkt_scrapper import get_transfermarkt_player_list
 from selenium import webdriver
 import re
 import json
+from datetime import datetime
 
 
     # --------------------
@@ -12,10 +13,12 @@ def retrieve_year(data):
 
     for x in data["uniqueTournamentSeasons"]:
         year = x["seasons"][0]['year']
-        print("\n", year) # x = dict
-        print(f"type x {type(year)}")
 
-    return
+        if "/" in year:
+            year = int(year.split("/")[1])
+            year = 2000 + year
+
+    return year
 
 
 def get_match(nav, player): # get match for getting player ID
@@ -82,6 +85,7 @@ def get_recent_seasons_ids(nav, player_id, limit=3):
         return[]
 
     print(f"Printing data for player")
+    year = retrieve_year(data)
     #print(data)
 
     """entries = []
