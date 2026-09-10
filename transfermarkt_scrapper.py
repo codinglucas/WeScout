@@ -99,6 +99,7 @@ def get_transfermarkt_player_list(
         resp = session.post(url, data=form_data)
         print(resp.status_code)
 
+
     soup = BeautifulSoup(resp.text, "html.parser")
     table = soup.find("table", class_="items")
 

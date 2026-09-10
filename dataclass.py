@@ -6,17 +6,17 @@ class Player:
     club: str
     value: int = 0
 
-    sofascore_id: str | None = None
+    sofascore_id: str | None = 0
 
-    matches: float | None = None
-    rating: float | None = None
-    goals: float | None = None
-    assists: float | None = None
-    key_passes: float | None = None
-    minutes_played: float | None = None
-    tackles: float | None = None
-    interceptions: float | None = None
-    dribbled_past: float | None = None
-    big_chances_created: float | None = None
-    accurate_passes: float | None = None
-    total_passes: float | None = None
+    matches: float | None = 0
+    rating: float | None = 0
+    goals: float | None = 0
+    assists: float | None = 0
+    key_passes: float | None = 0
+    minutes_played: float | None = 0
+    tackles: float | None = 0
+    interceptions: float | None = 0
+    dribbled_past: float | None = 0
+    big_chances_created: float | None = 0
+    accurate_passes: float | None = 0
+    total_passes: float | None = 0

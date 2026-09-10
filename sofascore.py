@@ -53,6 +53,7 @@ def calculate_p90_pmatches(decision, player):
 
 
 def fetch_json(nav, url):
+    print(f"fetch to the following url {url}")
     script = """
     const url = arguments[0];
     const callback = arguments[arguments.length - 1];
@@ -72,19 +73,23 @@ def fetch_json(nav, url):
         return None
 
     
-def get_recent_seasons(nav, player_id, limit=3):
+def get_recent_seasons_ids(nav, player_id, limit=3):
+    print("Running get_recent_seasons")
     url = f"https://api.sofascore.com/api/v1/player/{player_id}/statistics/seasons"
 
     data = fetch_json(nav, url) #data = dict of API
-    nav.get(url)
+
     if not data:
+        print("no data in get_recent_seasons fetch")
         return[]
 
     entries = []
     for entry in data.get("uniqueTournamentSeasons", []):
         tournament_id = entry["uniqueTournament"]["id"]
+        #print("tournament id ", tournament_id)
         for season in entry["seasons"]:
             entries.append((tournament_id, season["id"]))
+            #print("season id ", season["id"])
     return entries[:limit]
 
 
@@ -117,12 +122,13 @@ def get_player_id(nav, players):
 
         else:
             print(player.name, "-> ID not found")
+        break
 
 
 
 def get_players_stats(nav, players):
 
-    print("im being called")
+    print("get_players_stats being called")
 
     STAT_TO_ATTR = {
         "rating": "rating",
@@ -140,9 +146,17 @@ def get_players_stats(nav, players):
     }
 
     for player in players:
+
+        nav.get(f"https://www.sofascore.com/player/x/{player.sofascore_id}")
+
         #print("Player name ", player.name, "player id", player.sofascore_id)
-        seasons = get_recent_seasons(nav, player.sofascore_id, limit=3)
+        seasons = get_recent_seasons_ids(nav, player.sofascore_id, limit=3)
+        print("\n\n\nseasons", seasons)
+
+
         count = 0
+
+
         for tournament_id, season_id in seasons:
             print("Tournament_Id", tournament_id)
             print("Season_id", season_id)
@@ -150,14 +164,17 @@ def get_players_stats(nav, players):
             count += 1
             player_season_stats = get_season_stats(nav, player.sofascore_id, tournament_id, season_id)
 
-            print(player.name, "stats: ")
-            player_season_stats
+            print(player.name, "stats: ", player_season_stats)
+            
 
-            for key, attribute in STAT_TO_ATTR.keys():
-                if key in player_season_stats.keys(): #se o player tiver esse stats
-                    setattr(player, attribute, player_season_stats.get(key))
+            for sofascore_key, player_attribute in STAT_TO_ATTR.items():
+                if sofascore_key in player_season_stats.keys(): #checar se o player tiver esse stats
+                    value = getattr(player, player_attribute) + player_season_stats.get(sofascore_key)
+                    setattr(player, player_attribute, value)
                 else:
-                    print(player.name, key, ": ", "Not found")
+                    print(player.name, sofascore_key, ": ", "Not found")
+
+        break
 
 
 
@@ -171,6 +188,7 @@ if __name__ == "__main__":
     get_players_stats(nav, players)
 
     for player in players:
-        if player == players[5]:
-            break
-        print(vars(player))
+        print("Initialization completed. now showing vars(player)")
+        for var in vars(player):
+            print(var)
+        break
