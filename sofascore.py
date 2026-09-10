@@ -12,7 +12,7 @@ players = get_transfermarkt_player_list()
 
 # helper methods
 def get_match(nav, player):
-    id_url = f"https://www.sofascore.com/api/v1/search/all?q={player.name}"
+    id_url = f"https://www.sofascore.com/api/v1/search/all?q={player.name} {player.club.split()[0]}"
     nav.get(id_url)
 
 
