@@ -3,15 +3,22 @@ from selenium import webdriver
 import re
 import json
 
-#MAX_AGE = input("Max_age: ")
-#MIN_AGE = input("Min_age: ")
-#MAX_PRICE = input("Max_price: ")
-#POSITION_ID = input("Position_id: ")
 
-players = get_transfermarkt_player_list()
+    # --------------------
+    #   helper methods
 
-# helper methods
-def get_match(nav, player):
+
+def retrieve_year(data):
+
+    for x in data["uniqueTournamentSeasons"]:
+        year = x["seasons"][0]['year']
+        print("\n", year) # x = dict
+        print(f"type x {type(year)}")
+
+    return
+
+
+def get_match(nav, player): # get match for getting player ID
     id_url = f"https://www.sofascore.com/api/v1/search/all?q={player.name} {player.club.split()[0]}"
     nav.get(id_url)
 
@@ -35,22 +42,10 @@ def get_match(nav, player):
                 text
             )
 
-    print(player.name, "url: ", id_url)
+    #print(player.name, "url: ", id_url)
     return match
 
 
-
-
-def calculate_p90_pmatches(decision, player):
-    #matches = player.matches
-
-    for key, value in list(player.__dict__.items()):
-        if key in ['name', 'club', 'minutes_played', 'value', 'sofascore_id', 'matches']:
-            continue
-        if decision == 1:
-            player.__dict__[key] = (90 * value) / player.minutes_played
-        else: 
-            player.__dict__[key] = value / player.matches
 
 
 
@@ -65,14 +60,15 @@ def fetch_json(nav, url):
         .catch(err => callback({status: "error", body: String(err)}));
     """
     result = nav.execute_async_script(script, url)
-    print("Raw result")
-    print(result)
     if result["status"] != "ok":
         return None
     try:
         return json.loads(result["body"])
     except json.JSONDecodeError:
         return None
+
+
+
 
     
 def get_recent_seasons_ids(nav, player_id, limit=3):
@@ -85,14 +81,21 @@ def get_recent_seasons_ids(nav, player_id, limit=3):
         print("no data in get_recent_seasons fetch")
         return[]
 
-    entries = []
+    print(f"Printing data for player")
+    #print(data)
+
+    """entries = []
     for entry in data.get("uniqueTournamentSeasons", []):
         tournament_id = entry["uniqueTournament"]["id"]
         #print("tournament id ", tournament_id)
         for season in entry["seasons"]:
             entries.append((tournament_id, season["id"]))
-            #print("season id ", season["id"])
-    return entries[:limit]
+            #print("season id ", season["id"])"""
+    return data
+
+
+
+
 
 
 def get_season_stats(nav, player_id, tournament_id, season_id):
@@ -108,11 +111,26 @@ def get_season_stats(nav, player_id, tournament_id, season_id):
 
 
 
-    #Main methods
 
 
 
-def get_player_id(nav, players):
+
+
+
+
+
+
+    # ----------------------------
+    #        Main methods
+
+
+
+
+
+
+
+
+def get_player_id(nav, players, break_1=True):
 
     for player in players:
 
@@ -125,9 +143,12 @@ def get_player_id(nav, players):
         else:
             print(player.name, "-> ID not found")
 
+        if break_1:
+            break
 
 
-def get_players_stats(nav, players):
+
+def get_players_stats(nav, players, break_1=True):
 
     print("get_players_stats being called")
 
@@ -174,19 +195,32 @@ def get_players_stats(nav, players):
                     setattr(player, player_attribute, value)
                 else:
                     print(player.name, sofascore_key, ": ", "Not found")
+        if break_1:
+            break
 
 
 
+
+
+        # --------------
+        #   Execution
 
 
     
 if __name__ == "__main__":
+
+    break_1 = True
+
+    players = get_transfermarkt_player_list()
     nav = webdriver.Firefox()
 
     get_player_id(nav, players)
-    """get_players_stats(nav, players)
 
     for player in players:
-        print("Initialization completed. now showing vars(player)")
-        for var in vars(player):
-            print(f"{player.name}, {var}: ", getattr(player, var))"""
+        nav.get(f"https://www.sofascore.com/player/x/{player.sofascore_id}")
+        data = get_recent_seasons_ids(nav, player.sofascore_id)
+
+        retrieve_year(data)
+
+
+        break
