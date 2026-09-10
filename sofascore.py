@@ -122,7 +122,6 @@ def get_player_id(nav, players):
 
         else:
             print(player.name, "-> ID not found")
-        break
 
 
 
@@ -174,8 +173,6 @@ def get_players_stats(nav, players):
                 else:
                     print(player.name, sofascore_key, ": ", "Not found")
 
-        break
-
 
 
 
@@ -185,10 +182,9 @@ if __name__ == "__main__":
     nav = webdriver.Firefox()
 
     get_player_id(nav, players)
-    get_players_stats(nav, players)
+    #get_players_stats(nav, players)
 
-    for player in players:
-        print("Initialization completed. now showing vars(player)")
-        for var in vars(player):
-            print(var)
-        break
+    #for player in players:
+        #print("Initialization completed. now showing vars(player)")
+        #for var in vars(player):
+            #print(f"{player.name}, {var}: ", getattr(player, var))
