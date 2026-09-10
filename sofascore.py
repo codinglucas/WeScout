@@ -15,6 +15,7 @@ def get_match(nav, player):
     id_url = f"https://www.sofascore.com/api/v1/search/all?q={player.name}"
     nav.get(id_url)
 
+
     text = nav.find_element("tag name", "body").text
 
     match = re.search(
@@ -34,6 +35,7 @@ def get_match(nav, player):
                 text
             )
 
+    print(player.name, "url: ", id_url)
     return match
 
 
@@ -182,9 +184,9 @@ if __name__ == "__main__":
     nav = webdriver.Firefox()
 
     get_player_id(nav, players)
-    #get_players_stats(nav, players)
+    """get_players_stats(nav, players)
 
-    #for player in players:
-        #print("Initialization completed. now showing vars(player)")
-        #for var in vars(player):
-            #print(f"{player.name}, {var}: ", getattr(player, var))
+    for player in players:
+        print("Initialization completed. now showing vars(player)")
+        for var in vars(player):
+            print(f"{player.name}, {var}: ", getattr(player, var))"""
