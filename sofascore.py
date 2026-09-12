@@ -10,12 +10,13 @@ from datetime import datetime
 
 
 def normalize_year(year):
-    str(year)
+    year = str(year)
     #print(data.items())
     if "/" in year:
         year = int(year.split("/")[1])
         year = 2000 + year
 
+    year = int(year)
 
     return year
 
@@ -76,9 +77,15 @@ def fetch_json(nav, url):
 
 
 def retrieve_year_based_seasons(nav, player):
-    print("Running retrieve_year_based_seasons()")
-    nav.get(f"https://www.sofascore.com/player/x/{player.sofascore_id}")
+    current_year = int(datetime.now().year)
 
+    desired_years = []
+    desired_years.extend([current_year, current_year-1, current_year-2])
+    print(f"desired years {desired_years}")
+
+    print("Running retrieve_year_based_seasons()")
+
+    nav.get(f"https://www.sofascore.com/player/x/{player.sofascore_id}")
     url = f"https://api.sofascore.com/api/v1/player/{player.sofascore_id}/statistics/seasons"
     
     data = fetch_json(nav, url) #data = JSON-based dict
@@ -86,31 +93,38 @@ def retrieve_year_based_seasons(nav, player):
     if data == None:
         print("No data found in RYBS")
     else:
+        entries = []
         for x in data['uniqueTournamentSeasons']:
+            #print(x)
             year = x['seasons'][0]['year']
+            #print(normalize_year(year))
 
-            #if (normalize_year(year) in desired_years):
+            if (normalize_year(year) in desired_years):
+                print("x uniq tournament")
+                print(x['uniqueTournament'])
+
+            else:
+                print(f"{year} not in {desired_years}")
+                
+        return entries
         
 
     
-    return
-
-    
-def get_recent_seasons_ids(nav, player_id, limit=3):
+def get_recent_seasons_ids(nav, player_id, limit=3, data=None):
     print("\nRunning get_recent_seasons")
     print(f"Running seasons for {player_id}\n")
 
-
-    url = f"https://api.sofascore.com/api/v1/player/{player_id}/statistics/seasons"
-
-    data = fetch_json(nav, url) #data = JSON-based dict
-
     if data == None:
-        print("No data found in get_recent_seasons fetch")
-        return[]
+
+        url = f"https://api.sofascore.com/api/v1/player/{player_id}/statistics/seasons"
+
+        data = fetch_json(nav, url) #data = JSON-based dict
+
+        if data == None:
+            print("No data found in get_recent_seasons fetch")
+            return[]
 
     print("GET RECENT SEASONS ID type(data):", type(data))
-    #year = retrieve_year(data)
 
     entries = []
     for entry in data.get("uniqueTournamentSeasons", []):
@@ -119,7 +133,9 @@ def get_recent_seasons_ids(nav, player_id, limit=3):
 
         for season in entry["seasons"]:
             entries.append((tournament_id, season["id"]))
+            year = normalize_year(season['year'])
             print("season id ", season["id"])
+            print("year", year)
 
     print(f"\n{player_id} sucessfully found Tournament and Seasons IDs")
     print(f"Printing entries: {entries}")
@@ -145,26 +161,8 @@ def get_season_stats(nav, player_id, tournament_id, season_id):
     
     return data.get("statistics")
 
-
-
-
-
-
-
-
-
-
-
-
     # ----------------------------
     #        Main methods
-
-
-
-
-
-
-
 
 def get_player_id(nav, players, break_1=True):
 
@@ -184,7 +182,7 @@ def get_player_id(nav, players, break_1=True):
 
 
 
-def get_players_stats(nav, players, break_1=False):
+def get_players_stats(nav, players, break_1=True):
 
 
     STAT_TO_ATTR = {
@@ -206,8 +204,7 @@ def get_players_stats(nav, players, break_1=False):
 
         nav.get(f"https://www.sofascore.com/player/x/{player.sofascore_id}")
 
-        #print("Player name ", player.name, "player id", player.sofascore_id)
-        seasons = get_recent_seasons_ids(nav, player.sofascore_id, limit=3)
+        seasons = retrieve_year_based_seasons(nav, player)
         print(f"\n\n\nPlayer {player.name} has {len(seasons)} seasons. Here are them: \n {seasons}")
 
         count = 0
@@ -245,9 +242,6 @@ def execute():
     get_player_id(nav, players, break_1=False) #update player.sofascore_id
 
     for player in players:
-        print(player.sofascore_id)
-
-    for player in players:
         nav.get(f"https://www.sofascore.com/player/x/{player.sofascore_id}")
         players = get_players_stats(nav, players)
 
@@ -264,17 +258,4 @@ def execute():
 
     
 if __name__ == "__main__":
-    from manual_player_list import create_manual_list
-
-    players = create_manual_list()
-    nav = webdriver.Firefox()
-
-    get_player_id(nav, players, break_1=False)
-
-    for player in players:
-
-        retrieve_year_based_seasons(nav, player)
-
-        break
-
-    #execute()
+    execute()
