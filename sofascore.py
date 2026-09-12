@@ -9,43 +9,44 @@ from datetime import datetime
     #   helper methods
 
 
-def retrieve_year(data):
+def normalize_year(year):
+    str(year)
+    #print(data.items())
+    if "/" in year:
+        year = int(year.split("/")[1])
+        year = 2000 + year
 
-    for x in data["uniqueTournamentSeasons"]:
-        year = x["seasons"][0]['year']
-
-        if "/" in year:
-            year = int(year.split("/")[1])
-            year = 2000 + year
 
     return year
 
 
-def get_match(nav, player): # get match for getting player ID
-    id_url = f"https://www.sofascore.com/api/v1/search/all?q={player.name} {player.club.split()[0]}"
-    nav.get(id_url)
+def match_id(nav, player): # match player for his ID
+    first_club_word = player.club.split()[0] 
+    last_name = player.name.split()[-1] 
 
+    queries = [
+        f"{player.name} {first_club_word}",
+        f"{last_name} {first_club_word}",
+        f"{last_name}"
+    ]
 
-    text = nav.find_element("tag name", "body").text
+    match = None
 
-    match = re.search(
-        r'entity\s+id\s+(\d+)',
-        text
-    )
+    for query in queries:
+        if not query.strip(): 
+            continue
 
-
-    if match == None:
-        id_url = f"https://www.sofascore.com/api/v1/search/all?q={player.name.split()[-1]} {player.club.split()[0]}"
+        id_url = f"https://www.sofascore.com/api/v1/search/all?q={query}"
+        
         nav.get(id_url)
-
         text = nav.find_element("tag name", "body").text
+        
+        match = re.search(r'entity\s+id\s+(\d+)', text)
+        print(f"Match data type for {player.name}: {type(match)}")
+        
+        if match is not None:
+            break  
 
-        match = re.search(
-                r'entity\s+id\s+(\d+)',
-                text
-            )
-
-    #print(player.name, "url: ", id_url)
     return match
 
 
@@ -53,7 +54,8 @@ def get_match(nav, player): # get match for getting player ID
 
 
 def fetch_json(nav, url):
-    print(f"fetch to the following url {url}")
+    print(f"\nFETCH to the following url {url}")
+
     script = """
     const url = arguments[0];
     const callback = arguments[arguments.length - 1];
@@ -62,40 +64,67 @@ def fetch_json(nav, url):
         .then(text => callback({status: "ok", body: text}))
         .catch(err => callback({status: "error", body: String(err)}));
     """
+
     result = nav.execute_async_script(script, url)
+
     if result["status"] != "ok":
         return None
     try:
-        return json.loads(result["body"])
+        return json.loads(result["body"]) #transforms result into Py dict
     except json.JSONDecodeError:
         return None
 
 
+def retrieve_year_based_seasons(nav, player):
+    print("Running retrieve_year_based_seasons()")
+    nav.get(f"https://www.sofascore.com/player/x/{player.sofascore_id}")
 
+    url = f"https://api.sofascore.com/api/v1/player/{player.sofascore_id}/statistics/seasons"
+    
+    data = fetch_json(nav, url) #data = JSON-based dict
+
+    if data == None:
+        print("No data found in RYBS")
+    else:
+        for x in data['uniqueTournamentSeasons']:
+            year = x['seasons'][0]['year']
+
+            #if (normalize_year(year) in desired_years):
+        
+
+    
+    return
 
     
 def get_recent_seasons_ids(nav, player_id, limit=3):
-    print("Running get_recent_seasons")
+    print("\nRunning get_recent_seasons")
+    print(f"Running seasons for {player_id}\n")
+
+
     url = f"https://api.sofascore.com/api/v1/player/{player_id}/statistics/seasons"
 
-    data = fetch_json(nav, url) #data = dict of API
+    data = fetch_json(nav, url) #data = JSON-based dict
 
-    if not data:
-        print("no data in get_recent_seasons fetch")
+    if data == None:
+        print("No data found in get_recent_seasons fetch")
         return[]
 
-    print(f"Printing data for player")
-    year = retrieve_year(data)
-    #print(data)
+    print("GET RECENT SEASONS ID type(data):", type(data))
+    #year = retrieve_year(data)
 
-    """entries = []
+    entries = []
     for entry in data.get("uniqueTournamentSeasons", []):
         tournament_id = entry["uniqueTournament"]["id"]
-        #print("tournament id ", tournament_id)
+        print("tournament id ", tournament_id)
+
         for season in entry["seasons"]:
             entries.append((tournament_id, season["id"]))
-            #print("season id ", season["id"])"""
-    return data
+            print("season id ", season["id"])
+
+    print(f"\n{player_id} sucessfully found Tournament and Seasons IDs")
+    print(f"Printing entries: {entries}")
+
+    return entries[:limit]
 
 
 
@@ -107,10 +136,13 @@ def get_season_stats(nav, player_id, tournament_id, season_id):
         f"https://api.sofascore.com/api/v1/player/{player_id}"
         f"/unique-tournament/{tournament_id}/season/{season_id}/statistics/overall"
     )
+
     data = fetch_json(nav, url)
-    if not data:
-        print("Not data")
+
+    if data == None:
+        print("No data available for get_season_stats")
         return None
+    
     return data.get("statistics")
 
 
@@ -138,7 +170,7 @@ def get_player_id(nav, players, break_1=True):
 
     for player in players:
 
-        match = get_match(nav, player)
+        match = match_id(nav, player)
 
         if match:
             player.sofascore_id = match.group(1)
@@ -152,9 +184,8 @@ def get_player_id(nav, players, break_1=True):
 
 
 
-def get_players_stats(nav, players, break_1=True):
+def get_players_stats(nav, players, break_1=False):
 
-    print("get_players_stats being called")
 
     STAT_TO_ATTR = {
         "rating": "rating",
@@ -177,21 +208,18 @@ def get_players_stats(nav, players, break_1=True):
 
         #print("Player name ", player.name, "player id", player.sofascore_id)
         seasons = get_recent_seasons_ids(nav, player.sofascore_id, limit=3)
-        print("\n\n\nseasons", seasons)
-
+        print(f"\n\n\nPlayer {player.name} has {len(seasons)} seasons. Here are them: \n {seasons}")
 
         count = 0
-
 
         for tournament_id, season_id in seasons:
             print("Tournament_Id", tournament_id)
             print("Season_id", season_id)
             print(f"Season {count}")
-            count += 1
-            player_season_stats = get_season_stats(nav, player.sofascore_id, tournament_id, season_id)
 
-            print(player.name, "stats: ", player_season_stats)
-            
+            count += 1
+
+            player_season_stats = get_season_stats(nav, player.sofascore_id, tournament_id, season_id)            
 
             for sofascore_key, player_attribute in STAT_TO_ATTR.items():
                 if sofascore_key in player_season_stats.keys(): #checar se o player tiver esse stats
@@ -199,32 +227,54 @@ def get_players_stats(nav, players, break_1=True):
                     setattr(player, player_attribute, value)
                 else:
                     print(player.name, sofascore_key, ": ", "Not found")
+
         if break_1:
             break
 
+    return players
+
+
+
+def execute():
+
+    from manual_player_list import create_manual_list
+
+    players = create_manual_list()
+    nav = webdriver.Firefox()
+
+    get_player_id(nav, players, break_1=False) #update player.sofascore_id
+
+    for player in players:
+        print(player.sofascore_id)
+
+    for player in players:
+        nav.get(f"https://www.sofascore.com/player/x/{player.sofascore_id}")
+        players = get_players_stats(nav, players)
+
+    return players
 
 
 
 
-        # --------------
-        #   Execution
+
+
+    # -----------------------------
+    #   Execution
 
 
     
 if __name__ == "__main__":
+    from manual_player_list import create_manual_list
 
-    break_1 = True
-
-    players = get_transfermarkt_player_list()
+    players = create_manual_list()
     nav = webdriver.Firefox()
 
-    get_player_id(nav, players)
+    get_player_id(nav, players, break_1=False)
 
     for player in players:
-        nav.get(f"https://www.sofascore.com/player/x/{player.sofascore_id}")
-        data = get_recent_seasons_ids(nav, player.sofascore_id)
 
-        retrieve_year(data)
-
+        retrieve_year_based_seasons(nav, player)
 
         break
+
+    #execute()
