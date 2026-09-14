@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from sofascore import get_player_data, dataframe_organizer
+from sofascore import execute
 from start import get_player_list
 
 app = Flask(__name__)
@@ -51,12 +51,7 @@ def search_players():
         print(f"Searching with: min_age={min_age}, max_age={max_age}, max_value={max_value}, position_id={position_id}")
         
         # Get player data from your existing functions
-        player_list, club_list, price_list, int_price_list = get_player_list(
-            min_age, 
-            max_age, 
-            max_value,  # This is max_price in your function
-            position_id
-        )
+        players = execute()
         
         print(f"Found {len(player_list)} players from get_player_list")
         
@@ -124,7 +119,7 @@ def search_players():
         
         return jsonify({
             'success': True,
-            'count': len(players_data),
+            'count': len(players),
             'players': players_data
         }), 200
         
