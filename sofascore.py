@@ -11,7 +11,6 @@ from datetime import datetime
 
 def normalize_year(year):
     year = str(year)
-    #print(data.items())
     if "/" in year:
         year = int(year.split("/")[1])
         year = 2000 + year
@@ -76,11 +75,12 @@ def fetch_json(nav, url):
         return None
 
 
-def retrieve_year_based_seasons(nav, player):
+def retrieve_year_based_seasons(nav, player): #update seasons attr of each player
     current_year = int(datetime.now().year)
 
     desired_years = []
     desired_years.extend([current_year, current_year-1, current_year-2])
+
     print(f"desired years {desired_years}")
 
     print("Running retrieve_year_based_seasons()")
@@ -92,21 +92,20 @@ def retrieve_year_based_seasons(nav, player):
 
     if data == None:
         print("No data found in RYBS")
+
     else:
-        entries = []
-        for x in data['uniqueTournamentSeasons']:
-            #print(x)
-            year = x['seasons'][0]['year']
-            #print(normalize_year(year))
+        for x in data['uniqueTournamentSeasons']:     
+                for season in x["seasons"]:
+                    year = normalize_year(season['year'])
+                    if year in desired_years:
+                        tournament_id = x["uniqueTournament"]["id"]
+                        new_dict = {"tournament_id": tournament_id, "season_id": season["id"], "year": normalize_year(season['year']), "name": season["name"]}
 
-            if (normalize_year(year) in desired_years):
-                print("x uniq tournament")
-                print(x['uniqueTournament'])
-
-            else:
-                print(f"{year} not in {desired_years}")
+                        player.seasons.append(new_dict)
+                    else:
+                        print(f"I disconsidered {season["name"]}. {year}")
                 
-        return entries
+        return 
         
 
     
@@ -143,23 +142,57 @@ def get_recent_seasons_ids(nav, player_id, limit=3, data=None):
     return entries[:limit]
 
 
+def normalize_rating(nav, player):
+    player.rating = player.rating / player.matches
 
 
+def get_season_stats(nav, player):
+
+    STAT_TO_ATTR = {
+            "rating": "rating",
+            "appearances": "matches",
+            "goals": "goals",
+            "assists": "assists",
+            "keyPasses": "key_passes",
+            "minutesPlayed": "minutes_played",
+            "tackles": "tackles",
+            "interceptions": "interceptions",
+            "dribbledPast": "dribbled_past",
+            "bigChancesCreated": "big_chances_created",
+            "accuratePasses": "accurate_passes",
+            "totalPasses": "total_passes",
+        }
 
 
-def get_season_stats(nav, player_id, tournament_id, season_id):
-    url = (
-        f"https://api.sofascore.com/api/v1/player/{player_id}"
-        f"/unique-tournament/{tournament_id}/season/{season_id}/statistics/overall"
-    )
+    for season in player.seasons:
+        url = (
+            f"https://api.sofascore.com/api/v1/player/{player.sofascore_id}"
+            f"/unique-tournament/{season['tournament_id']}/season/{season['season_id']}/statistics/overall"
+        )
 
-    data = fetch_json(nav, url)
+        data = fetch_json(nav, url)['statistics']
 
-    if data == None:
-        print("No data available for get_season_stats")
-        return None
-    
-    return data.get("statistics")
+        if data == None:
+            print("No data available for get_season_stats")
+            continue
+
+        for sofascore_key, player_attribute in STAT_TO_ATTR.items():
+            if sofascore_key in data.keys(): #checar se o player tiver esse stats
+
+                if sofascore_key == "rating":
+                    value = (data.get(sofascore_key) * data.get("appearances")) #sum current player atr value + one scrapped
+                    value += getattr(player, player_attribute)
+                    setattr(player, player_attribute, value)
+
+                else:
+                    value = getattr(player, player_attribute) + data.get(sofascore_key) #sum current player atr value + one scrapped
+                    setattr(player, player_attribute, value)
+            else:
+                print(player.name, sofascore_key, ": ", "Not found")
+
+
+        
+    return
 
     # ----------------------------
     #        Main methods
@@ -243,7 +276,9 @@ def execute():
 
     for player in players:
         nav.get(f"https://www.sofascore.com/player/x/{player.sofascore_id}")
-        players = get_players_stats(nav, players)
+        retrieve_year_based_seasons(nav, player)
+        #get_season_stats(nav, player)
+        #normalize_rating(nav, player)
 
     return players
 
@@ -254,8 +289,3 @@ def execute():
 
     # -----------------------------
     #   Execution
-
-
-    
-if __name__ == "__main__":
-    execute()

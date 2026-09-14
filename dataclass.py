@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 @dataclass
 class Player:
@@ -20,3 +20,5 @@ class Player:
     big_chances_created: float | None = 0
     accurate_passes: float | None = 0
     total_passes: float | None = 0
+
+    seasons: list = field(default_factory=list)
