@@ -1,5 +1,7 @@
 # WeScout
 
+> **Disclaimer:** This project is a personal, educational exercise built for learning purposes (web scraping, APIs, data handling, and basic frontend/backend integration). It is **not** a commercial product, and there is **no intent to commercialize, sell, or monetize** it in any way. It scrapes publicly viewable data from Transfermarkt and SofaScore for personal, non-commercial use only, and is not affiliated with, endorsed by, or sponsored by either site. Use of this code is subject to those sites' respective terms of service.
+
 WeScout is a football (soccer) scouting tool that combines player data scraped from **Transfermarkt** (market value, club, basic bio) with detailed performance statistics pulled from **SofaScore** (ratings, goals, assists, tackles, passing, etc.), and exposes it through a Flask API and a simple web dashboard.
 
 ## How it works
