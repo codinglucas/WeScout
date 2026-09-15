@@ -8,6 +8,20 @@ from datetime import datetime
     # --------------------
     #   helper methods
 
+CACHE_FILE = "player_cache.json"
+
+def load_cache():
+    try:
+        with open(CACHE_FILE, "r", encoding="utf-8") as file:
+            return json.load(file)
+    except FileNotFoundError:
+        return {}
+
+def save_cache(cache):
+    with open(CACHE_FILE, "w", encoding="utf-8") as file:
+        json.dump(cache, file, indent=4, ensure_ascii=False)
+
+
 
 def normalize_year(year):
     year = str(year)
@@ -18,6 +32,7 @@ def normalize_year(year):
     year = int(year)
 
     return year
+
 
 
 def match_id(nav, player): # match player for his ID
@@ -199,19 +214,25 @@ def get_season_stats(nav, player):
 
 def get_player_id(nav, players, break_1=True):
 
+    player_cache_file = load_cache()
+
     for player in players:
 
-        match = match_id(nav, player)
+        if player.name not in player_cache_file:
+            match = match_id(nav, player)
 
-        if match:
-            player.sofascore_id = match.group(1)
-            print(player.name, "->", player.sofascore_id)
+            if match:
+                player.sofascore_id = match.group(1)
+                print(player.name, "->", player.sofascore_id)
+
+                player_cache_file[player.name] = player.sofascore_id
+                save_cache(player_cache_file)
+
+            else:
+                print(player.name, "-> ID not found")
 
         else:
-            print(player.name, "-> ID not found")
-
-        if break_1:
-            break
+            player.sofascore_id = player_cache_file[player.name]
 
 
 
