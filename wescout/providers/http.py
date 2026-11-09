@@ -98,7 +98,7 @@ class HttpClient:
     def _cache_path(self, key: str) -> Path | None:
         if self.cache_dir is None:
             return None
-        return self.cache_dir / self.source / key[:2] / f"{key}.json"
+        return self.cache_dir / self.source / key[:2] / key
 
     def _wait_turn(self) -> None:
         if self._last_request_at is not None:
@@ -120,18 +120,34 @@ class HttpClient:
         `is_ok` decides whether a 200 response is cacheable (APIs that report errors in the
         body, like API-Football, must not have those cached).
         """
+        text = self.fetch_text(
+            endpoint, params, use_cache=use_cache, is_ok=lambda t: is_ok(json.loads(t))
+        )
+        return json.loads(text)
+
+    def fetch_text(
+        self,
+        endpoint: str,
+        params: dict[str, Any] | None = None,
+        *,
+        method: str = "GET",
+        form: dict[str, Any] | None = None,
+        use_cache: bool = True,
+        is_ok: Callable[[str], bool] = lambda _: True,
+    ) -> str:
+        """Fetch a page (GET, or POST with a form) and return the body as text."""
         params = dict(params or {})
-        key = request_key(self.source, endpoint, params)
+        key = request_key(self.source, f"{method} {endpoint}", {**params, "__form": form})
         path = self._cache_path(key)
         if use_cache and path is not None and path.exists():
-            return json.loads(path.read_text(encoding="utf-8"))
+            return path.read_text(encoding="utf-8")
 
         attempt = 0
         while True:
             if self.quota is not None:
                 self.quota.check()
             self._wait_turn()
-            response = self._http().get(endpoint, params=params)
+            response = self._http().request(method, endpoint, params=params, data=form)
             self.requests_made += 1
             if self.quota is not None:
                 self.quota.record()
@@ -139,7 +155,8 @@ class HttpClient:
                 if header is not None and header.isdigit():
                     self.quota.remaining_reported = int(header)
 
-            if response.status_code in (401, 403) or response.status_code == 202:
+            # 202 is how some bot-protection layers answer (e.g. a JS challenge page).
+            if response.status_code in (202, 401, 403):
                 raise ProviderBlocked(f"{self.source} refused {endpoint}: {response.status_code}")
             if response.status_code == 429 or response.status_code >= 500:
                 attempt += 1
@@ -153,13 +170,13 @@ class HttpClient:
             if response.status_code != 200:
                 raise ProviderError(f"{self.source} {endpoint}: HTTP {response.status_code}")
 
-            data = response.json()
-            if path is not None and is_ok(data):
+            text = response.text
+            if path is not None and is_ok(text):
                 path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+                path.write_text(text, encoding="utf-8")
                 if self.on_raw:
                     self.on_raw(key, endpoint, params, str(path), response.status_code)
-            return data
+            return text
 
 
 def utcnow() -> datetime:
