@@ -3,9 +3,9 @@
     uv run python -m wescout.etl --provider api_football --competitions 39,140 --seasons 2023
     uv run python -m wescout.etl --resolve-only
 
-Resumability: every unit of work (one league-season, one page, one team's transfers) is a
-row in etl_checkpoints; finished units are skipped on the next run. Raw responses are cached
-on disk, so re-reading page 1 to learn the page count costs no request. When the daily quota
+Resumability: every unit of work (league-season metadata, club list, one squad page, one
+club's transfers) is a row in etl_checkpoints; finished units are skipped on the next run.
+Raw responses are cached on disk, so re-reading page 1 to learn the page count is free. When the daily quota
 runs out the run ends as 'partial'; run the same command again tomorrow.
 
 Scheduling: the command is safe to run from cron/GitHub Actions as-is (not set up here).
@@ -30,7 +30,7 @@ from wescout.db import repository as repo
 from wescout.db.connection import connect
 from wescout.db.integrity import check_integrity
 from wescout.models import SearchFilters
-from wescout.providers.api_football import ApiFootballProvider
+from wescout.providers.api_football import FREE_PLAN_MAX_PAGE, ApiFootballProvider
 from wescout.providers.base import ProviderBlocked, QuotaExhausted
 from wescout.providers.http import QuotaTracker
 from wescout.providers.registry import create_provider
@@ -121,58 +121,60 @@ def run_api_football(
             ).fetchone()
             complete = bool(row[0]) if row else False
 
-            # 2) Player pages.
-            page, total = 1, 1
-            while page <= total:
-                key = f"players:{tag}:{page}"
-                done = repo.checkpoint_done(con, name, key)
-                if done and page > 1:
-                    summary.pages_skipped += 1
-                    page += 1
-                    continue
-                if not done and not budget_left():
-                    raise _BudgetReached
-                # Page 1 is re-read (from the disk cache when already fetched) for the count.
-                result = provider.fetch_players_page(league, season, page)
-                total = result.total_pages or 1
-                if done:
-                    summary.pages_skipped += 1
-                else:
-                    fetched = repo.utcnow()
-                    with _Tx(con):
-                        n = repo.upsert_source_players(con, result.players, fetched)
-                        n += repo.upsert_season_stats(
-                            con, result.stats, fetched, season_complete=complete
-                        )
-                        repo.mark_checkpoint(con, name, key, "done", n)
-                    summary.records += n
-                    summary.pages_done += 1
-                    log.info("%s page %d/%d: %d records", tag, page, total, n)
-                page += 1
+            # 2) Clubs in the league-season (read back from the disk cache on resume).
+            key = f"teams:{tag}"
+            teams_done = repo.checkpoint_done(con, name, key)
+            if not teams_done and not budget_left():
+                raise _BudgetReached
+            teams = provider.fetch_teams(league, season)
+            if not teams_done:
+                repo.mark_checkpoint(con, name, key, "done", len(teams))
 
-            # 3) Transfers per club (one request per club, not per player).
-            if transfers:
-                club_ids = [
-                    r[0]
-                    for r in con.execute(
-                        "SELECT DISTINCT e.source_id FROM player_season_stats s"
-                        " JOIN seasons x USING (season_id)"
-                        " JOIN external_ids c ON c.entity_type = 'competition'"
-                        "  AND c.entity_id = x.competition_id AND c.source = s.source"
-                        " JOIN external_ids e ON e.entity_type = 'club'"
-                        "  AND e.entity_id = s.club_id AND e.source = s.source"
-                        " WHERE s.source = ? AND c.source_id = ? AND x.start_year = ?"
-                        " ORDER BY 1",
-                        [name, str(league), season],
-                    ).fetchall()
-                ]
-                for team in club_ids:
-                    key = f"transfers:team:{team}"
+            # 3) Each club's squad + season stats. The free plan rejects page > 3, so we go
+            #    club by club (squads fit in 3 pages of 20) instead of paging the league.
+            for team in teams:
+                page, total = 1, 1
+                while page <= total:
+                    key = f"team_players:{team.source_id}:{season}:{page}"
+                    done = repo.checkpoint_done(con, name, key)
+                    if done and page > 1:
+                        summary.pages_skipped += 1
+                        page += 1
+                        continue
+                    if not done and not budget_left():
+                        raise _BudgetReached
+                    # Page 1 is re-read (from the disk cache if already fetched) for the count.
+                    result = provider.fetch_team_players_page(
+                        int(team.source_id), season, page, league
+                    )
+                    total = result.total_pages or 1
+                    if total > FREE_PLAN_MAX_PAGE:
+                        log.warning("%s has %d pages; only %d reachable on the free plan",
+                                    team.name, total, FREE_PLAN_MAX_PAGE)  # fmt: skip
+                        total = FREE_PLAN_MAX_PAGE
+                    if done:
+                        summary.pages_skipped += 1
+                    else:
+                        fetched = repo.utcnow()
+                        with _Tx(con):
+                            n = repo.upsert_source_players(con, result.players, fetched)
+                            n += repo.upsert_season_stats(
+                                con, result.stats, fetched, season_complete=complete
+                            )
+                            repo.mark_checkpoint(con, name, key, "done", n)
+                        summary.records += n
+                        summary.pages_done += 1
+                        log.info("%s %s page %d/%d: %d records", tag, team.name, page, total, n)
+                    page += 1
+
+                # 4) Transfers (one request per club, not per player).
+                if transfers:
+                    key = f"transfers:team:{team.source_id}"
                     if repo.checkpoint_done(con, name, key):
                         continue
                     if not budget_left():
                         raise _BudgetReached
-                    rows = provider.fetch_team_transfers(int(team))
+                    rows = provider.fetch_team_transfers(int(team.source_id))
                     with _Tx(con):
                         n = repo.upsert_transfers(con, rows, repo.utcnow())
                         repo.mark_checkpoint(con, name, key, "done", n)

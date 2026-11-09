@@ -279,3 +279,21 @@ def test_fixtures_contain_no_secrets() -> None:
         text = path.read_text(encoding="utf-8")
         assert "x-apisports-key" not in text
         json.loads(text)
+
+
+def test_team_squad_page_keeps_league_rows_only(load_fixture: Any) -> None:
+    payload = load_fixture("api_football/players_team50_season2023_page1.json")
+    result = parse_players_page(payload, 2023, 39)
+    assert result.total_pages == 3
+    assert {s.competition.source_id for s in result.stats} == {"39"}
+    # Without a league filter, cups/Europe are kept but entries without a league id are not.
+    everything = parse_players_page(payload, 2023)
+    assert len(everything.stats) > len(result.stats)
+    assert all(s.competition.source_id != "None" for s in everything.stats)
+
+
+def test_teams_parsing(load_fixture: Any) -> None:
+    from wescout.providers.api_football import parse_teams
+
+    teams = parse_teams(load_fixture("api_football/teams_league39_season2023.json"))
+    assert {t.name for t in teams} == {"Manchester United", "Liverpool", "Manchester City"}

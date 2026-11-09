@@ -2,7 +2,8 @@
 
 Checked against the live API on 2026-11-09 (see docs/benchmarks.md):
   * free plan: 100 requests/day, 10/minute; seasons 2022-2024 only
-  * /players?league&season is paginated, 20 players per page (~50 pages per league-season)
+  * /players is paginated, 20 players per page, and the free plan rejects page > 3.
+    So we load per club: /teams?league&season, then /players?team&season (<= 3 pages).
   * errors come back as HTTP 200 with a non-empty `errors` field
   * no market values; transfer fees are free text in `type` ("€ 17.5M", "Loan", ...)
 """
@@ -34,6 +35,7 @@ from wescout.providers.http import HttpClient, QuotaTracker
 SOURCE = "api_football"
 BASE_URL = "https://v3.football.api-sports.io"
 FREE_PLAN_SEASONS = range(2022, 2025)
+FREE_PLAN_MAX_PAGE = 3
 
 _POSITIONS: dict[str, CoarsePosition] = {
     "Goalkeeper": "GK",
@@ -130,6 +132,8 @@ def parse_stats(
     out: list[SeasonStatsRecord] = []
     for s in item.get("statistics", []):
         league, team, games = s["league"], s["team"], s.get("games") or {}
+        if league.get("id") is None or not team.get("id"):
+            continue  # e.g. "FIFA Intercontinental Cup" comes without a league id
         if league_id is not None and league.get("id") != league_id:
             continue
         appearances = _int(games.get("appearences"))  # sic: API spelling
@@ -226,6 +230,13 @@ def parse_transfers(payload: dict[str, Any]) -> list[TransferRecord]:
     return out
 
 
+def parse_teams(payload: dict[str, Any]) -> list[ClubRef]:
+    return [
+        ClubRef(str(item["team"]["id"]), item["team"]["name"], item["team"].get("country"))
+        for item in payload.get("response", [])
+    ]
+
+
 def parse_league_season(payload: dict[str, Any], season: int) -> dict[str, Any] | None:
     """Return {competition, start, end, current} for one league-season."""
     for item in payload.get("response", []):
@@ -316,6 +327,17 @@ class ApiFootballProvider:
         )
         return parse_players_page(payload, season, league_id)
 
+    def fetch_teams(self, league_id: int, season: int) -> list[ClubRef]:
+        return parse_teams(self._get("/teams", {"league": league_id, "season": season}))
+
+    def fetch_team_players_page(
+        self, team_id: int, season: int, page: int, league_id: int | None = None
+    ) -> FetchResult:
+        """One page of a club's squad with season stats; `league_id` keeps only that league's
+        stat rows (the response also covers cups and European games)."""
+        payload = self._get("/players", {"team": team_id, "season": season, "page": page})
+        return parse_players_page(payload, season, league_id)
+
     def fetch_league_season(self, league_id: int, season: int) -> dict[str, Any] | None:
         return parse_league_season(
             self._get("/leagues", {"id": league_id, "season": season}), season
@@ -327,12 +349,13 @@ class ApiFootballProvider:
     # --- Provider protocol
 
     def iter_players(self, league_id: int, season: int) -> Iterator[FetchResult]:
-        page, total = 1, 1
-        while page <= total:
-            result = self.fetch_players_page(league_id, season, page)
-            total = result.total_pages or 1
-            yield result
-            page += 1
+        for team in self.fetch_teams(league_id, season):
+            page, total = 1, 1
+            while page <= total:
+                result = self.fetch_team_players_page(int(team.source_id), season, page, league_id)
+                total = min(result.total_pages or 1, FREE_PLAN_MAX_PAGE)
+                yield result
+                page += 1
 
     def search_players(self, filters: SearchFilters) -> FetchResult:
         """Fetch every player of the given competitions/season. Expensive (~50 requests per
