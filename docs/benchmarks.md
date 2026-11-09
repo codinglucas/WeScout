@@ -66,4 +66,20 @@ _To be filled in by ETL runs._
 
 ## 4. ID matching (precision/recall)
 
-_To be filled in by `scripts/eval_matching.py`._
+Method: `uv run python scripts/eval_matching.py` scores every hand-labelled pair in
+`eval/match_labels.csv`. A pair counts as a predicted match when its score reaches the
+auto-link threshold (0.90), which is what the pipeline would link without a human. Pairs
+scoring 0.70–0.90 go to the review list.
+
+| Date | Labelled pairs | Precision | Recall | False links | Sent to review |
+|---|---|---|---|---|---|
+| 2026-11-09 | 21 (16 matches, 5 non-matches) | **1.00** | **0.81** | 0 | 4 |
+
+The 3 missed matches all went to review, not to a wrong player:
+- 2 pairs where one source has no date of birth (capped below auto-link by design);
+- "Rodri" vs "Rodrigo Hernández", a nickname, which needs a manual override.
+
+The starter sample is small and was built to include tricky cases: diacritics,
+transliteration, initials, name order, long Portuguese names, day/month swaps, and namesakes
+(two Danilos, three Gabriels at Arsenal). The next step is extending it to about 200
+randomly sampled pairs, which will give a less optimistic number.
