@@ -53,6 +53,7 @@ class RunSummary:
     requests_used: int = 0
     pages_done: int = 0
     pages_skipped: int = 0
+    truncated_clubs: int = 0
     runtime_s: float = 0.0
     quota_remaining: int | None = None
     message: str = ""
@@ -149,8 +150,10 @@ def run_api_football(
                     )
                     total = result.total_pages or 1
                     if total > FREE_PLAN_MAX_PAGE:
-                        log.warning("%s has %d pages; only %d reachable on the free plan",
-                                    team.name, total, FREE_PLAN_MAX_PAGE)  # fmt: skip
+                        if page == 1:
+                            log.warning("%s has %d squad pages; only %d reachable on the free"
+                                        " plan", team.name, total, FREE_PLAN_MAX_PAGE)  # fmt: skip
+                            summary.truncated_clubs += 1
                         total = FREE_PLAN_MAX_PAGE
                     if done:
                         summary.pages_skipped += 1
