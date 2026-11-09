@@ -156,3 +156,79 @@ def test_empty_database(db: Any) -> None:
         "success": True, "count": 0, "players": [], "season": None, "public_mode": True,
         "attribution": [],
     }  # fmt: skip
+
+
+# ---------------------------------------------------------------- frontend endpoints
+
+
+def test_multi_position_and_sort(seeded: Any) -> None:
+    with _client(seeded, True) as c:
+        both = c.get("/api/players/search", params={"positions": "lb,st"}).json()["players"]
+        assert {p["player_name"] for p in both} == {
+            "Young Fullback", "Old Centreback", "Young Winger"
+        }  # fmt: skip
+        by_minutes = c.get("/api/players/search", params={"sort": "minutes"}).json()["players"]
+        assert by_minutes[0]["player_name"] == "Old Centreback"
+        youngest = c.get("/api/players/search", params={"sort": "age"}).json()["players"]
+        assert youngest[0]["player_name"] == "Young Winger"
+        assert c.get("/api/players/search", params={"sort": "drop table"}).status_code == 400
+
+
+def test_competition_filter(seeded: Any) -> None:
+    with _client(seeded, True) as c:
+        meta = c.get("/api/meta").json()
+        pl = meta["competitions"][0]["id"]
+        hit = c.get("/api/players/search", params={"competition": pl}).json()
+        miss = c.get("/api/players/search", params={"competition": pl + 999}).json()
+    assert hit["count"] == 3 and hit["players"][0]["competition"] == "Premier League"
+    assert miss["count"] == 0
+
+
+def test_meta_lists_only_public_data(seeded: Any) -> None:
+    with _client(seeded, True) as c:
+        public = c.get("/api/meta").json()
+    with _client(seeded, False) as c:
+        local = c.get("/api/meta").json()
+    assert public["seasons"] == [
+        {"start_year": 2023, "label": "2023/24"}, {"start_year": 2022, "label": "2022/23"}
+    ]  # fmt: skip
+
+    def total(meta: dict[str, Any]) -> int:
+        return sum(s["players"] for c in meta["competitions"] for s in c["seasons"])
+
+    # The scraped-only player counts in local mode but not in public mode. (Competitions are
+    # mapped per source, so its scraped "Premier League" is a separate local-only entry.)
+    assert total(local) == total(public) + 1
+    assert len(public["competitions"]) == 1
+    assert public["public_mode"] is True and local["public_mode"] is False
+
+
+def test_player_detail(seeded: Any) -> None:
+    with _client(seeded, True) as c:
+        search = c.get("/api/players/search").json()["players"]
+        pid = next(p["player_id"] for p in search if p["player_name"] == "Young Winger")
+        body = c.get(f"/api/players/{pid}").json()
+    player = body["player"]
+    assert player["name"] == "Young Winger" and player["age"] == 20
+    assert [s["season"] for s in player["seasons"]] == ["2023/24", "2022/23"]
+    assert player["seasons"][0]["per90"]["goals"] == pytest.approx(9 * 90 / 1800)
+    assert player["sofascore_ratings"] == []
+
+
+def test_player_detail_hides_scraped_only_player_in_public_mode(seeded: Any) -> None:
+    with _client(seeded, False) as c:
+        local = c.get("/api/players/search").json()["players"]
+        pid = next(p["player_id"] for p in local if p["player_name"] == "Scraped Only")
+        assert c.get(f"/api/players/{pid}").status_code == 200
+    with _client(seeded, True) as c:
+        r = c.get(f"/api/players/{pid}")
+        assert r.status_code == 404 and r.json()["success"] is False
+        assert c.get("/api/players/999999").status_code == 404
+
+
+def test_public_player_detail_has_no_scraped_fields(seeded: Any) -> None:
+    with _client(seeded, True) as c:
+        search = c.get("/api/players/search").json()["players"]
+        pid = next(p["player_id"] for p in search if p["player_name"] == "Young Fullback")
+        player = c.get(f"/api/players/{pid}").json()["player"]
+    assert player["position"] == "DF"  # 'LB' exists only in scraped data

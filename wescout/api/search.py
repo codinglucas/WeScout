@@ -25,9 +25,25 @@ class SearchParams:
     min_value: int | None = None
     max_value: int | None = None
     position: str | None = None
+    positions: tuple[str, ...] = ()  # several frontend codes, OR-ed (pitch multi-select)
+    competition_id: int | None = None
     season: int | None = None
     min_minutes: int = 0
+    sort: str = "rating"
     limit: int = 50
+
+    def position_codes(self) -> list[str]:
+        codes = [*self.positions, *([self.position] if self.position else [])]
+        return sorted({c.lower() for c in codes if c})
+
+
+SORTS = {
+    "rating": "st.rating DESC NULLS LAST, st.minutes DESC NULLS LAST",
+    "minutes": "st.minutes DESC NULLS LAST",
+    "goals": "st.goals DESC NULLS LAST, st.minutes ASC NULLS LAST",
+    "assists": "st.assists DESC NULLS LAST, st.minutes ASC NULLS LAST",
+    "age": "age ASC NULLS LAST, st.rating DESC NULLS LAST",
+}
 
 
 SEARCH_SQL = f"""
@@ -38,12 +54,13 @@ season_rows AS (
     SELECT sp.player_id, s.source, s.club_id, s.minutes, s.appearances, s.rating, s.goals,
            s.assists, s.key_passes, s.tackles, s.interceptions, s.dribbled_past,
            s.big_chances_created, s.accurate_passes, s.total_passes, s.position,
-           {SOURCE_PRIORITY_SQL} AS priority
+           x.competition_id, {SOURCE_PRIORITY_SQL} AS priority
     FROM player_season_stats s
     JOIN allowed USING (source)
     JOIN source_players sp USING (source, source_player_id)
     JOIN seasons x USING (season_id)
     WHERE sp.player_id IS NOT NULL AND x.start_year = $season
+      AND ($competition IS NULL OR x.competition_id = $competition)
 ),
 best_source AS (   -- one source per player, so stats are never double counted
     SELECT player_id, arg_min(source, priority) AS source FROM season_rows GROUP BY player_id
@@ -59,10 +76,13 @@ season_stats AS (  -- sum across clubs (mid-season transfers); rating weighted b
            sum(r.big_chances_created) AS big_chances_created,
            sum(r.accurate_passes) AS accurate_passes, sum(r.total_passes) AS total_passes,
            arg_max(c.name, coalesce(r.minutes, 0)) AS club_name,
-           arg_max(r.position, coalesce(r.minutes, 0)) AS season_position
+           arg_max(r.position, coalesce(r.minutes, 0)) AS season_position,
+           arg_max(cp.name, coalesce(r.minutes, 0)) AS competition,
+           arg_max(cp.competition_id, coalesce(r.minutes, 0)) AS competition_id
     FROM season_rows r
     JOIN best_source b USING (player_id, source)
     JOIN clubs c USING (club_id)
+    JOIN competitions cp USING (competition_id)
     GROUP BY r.player_id
 ),
 attrs AS (         -- player attributes from allowed sources only, best source first
@@ -90,7 +110,8 @@ latest_value AS (
     WHERE sp.player_id IS NOT NULL
     GROUP BY sp.player_id
 )
-SELECT st.player_id, a.name, st.club_name, a.nationality, a.date_of_birth,
+SELECT st.player_id, a.name, st.club_name, st.competition, st.competition_id,
+       a.nationality, a.date_of_birth,
        date_diff('year', a.date_of_birth, current_date)
            - CASE WHEN strftime(current_date, '%m%d') < strftime(a.date_of_birth, '%m%d')
                   THEN 1 ELSE 0 END AS age,
@@ -110,9 +131,10 @@ WHERE coalesce(st.minutes, 0) >= $min_minutes
   AND ($min_value IS NULL OR v.value_eur IS NULL OR v.value_eur >= $min_value)
   AND ($max_value IS NULL OR v.value_eur IS NULL OR v.value_eur <= $max_value)
   AND ($detailed IS NULL
-       OR a.detailed_position = $detailed
-       OR (a.detailed_position IS NULL AND coalesce(a.position, st.season_position) = $coarse))
-ORDER BY st.rating DESC NULLS LAST, st.minutes DESC NULLS LAST, st.player_id
+       OR list_contains($detailed, a.detailed_position)
+       OR (a.detailed_position IS NULL
+           AND list_contains($coarse, coalesce(a.position, st.season_position))))
+ORDER BY __ORDER_BY__, st.player_id
 LIMIT $limit
 """
 
@@ -199,10 +221,12 @@ def search_players(
     season = params.season or latest_season(con, public)
     if season is None:
         return [], None
-    detailed = (params.position or "").lower() or None
+    codes = params.position_codes()
+    coarse = sorted({DETAILED_TO_COARSE[c] for c in codes if c in DETAILED_TO_COARSE})
+    order_by = SORTS.get(params.sort, SORTS["rating"])  # whitelist: never user text in SQL
     cursor = con.cursor()
     rows = cursor.execute(
-        SEARCH_SQL,
+        SEARCH_SQL.replace("__ORDER_BY__", order_by),
         {
             "public": public,
             "season": season,
@@ -211,8 +235,9 @@ def search_players(
             "max_age": params.max_age,
             "min_value": params.min_value,
             "max_value": params.max_value,
-            "detailed": detailed,
-            "coarse": DETAILED_TO_COARSE.get(detailed or ""),
+            "detailed": codes or None,
+            "coarse": coarse or None,
+            "competition": params.competition_id,
             "limit": params.limit,
         },
     )
@@ -232,6 +257,9 @@ def search_players(
                 "player_id": r["player_id"],
                 "player_name": r["name"],
                 "club_name": r["club_name"],
+                "competition": r["competition"],
+                "competition_id": r["competition_id"],
+                "position_group": r["position"],
                 "position": (r["detailed_position"] or r["position"] or "").upper() or None,
                 "age": r["age"],
                 "nationality": r["nationality"],

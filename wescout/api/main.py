@@ -16,10 +16,11 @@ from typing import Annotated, Any
 import duckdb
 from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from wescout.api.search import SearchParams, attributions, search_players
+from wescout.api.players import catalogue, player_detail
+from wescout.api.search import SORTS, SearchParams, attributions, search_players
 from wescout.config import Settings, load_settings
 from wescout.db.connection import connect
 
@@ -40,7 +41,9 @@ POSITIONS = [
     {"id": 14, "code": "cf", "name": "Center Forward"},
 ]
 POSITION_CODES = {p["code"] for p in POSITIONS}
-FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
+ROOT = Path(__file__).resolve().parents[2]
+WEB_DIST = ROOT / "web" / "dist"  # React app (npm run build in web/)
+LEGACY_FRONTEND = ROOT / "frontend"
 
 
 def _error(message: str, status: int = 400) -> JSONResponse:
@@ -75,6 +78,9 @@ def create_app(
         min_value: Annotated[int | None, Query(ge=0)] = None,
         max_value: Annotated[int | None, Query(ge=0)] = None,
         position: str = "",
+        positions: str = "",
+        competition: Annotated[int | None, Query(ge=1)] = None,
+        sort: str = "rating",
         season: Annotated[int | None, Query(ge=1990, le=2100)] = None,
         min_minutes: Annotated[int, Query(ge=0)] = 0,
         limit: Annotated[int, Query(ge=1, le=500)] = 50,
@@ -83,12 +89,16 @@ def create_app(
             return _error("min_age cannot be greater than max_age")
         if min_value is not None and max_value is not None and min_value > max_value:
             return _error("min_value cannot be greater than max_value")
-        code = position.strip().lower() or None
-        if code is not None and code not in POSITION_CODES:
-            return _error(f"unknown position '{position}'")
+        codes = [c.strip().lower() for c in [position, *positions.split(",")] if c.strip()]
+        unknown = [c for c in codes if c not in POSITION_CODES]
+        if unknown:
+            return _error(f"unknown position '{unknown[0]}'")
+        if sort not in SORTS:
+            return _error(f"sort must be one of: {', '.join(SORTS)}")
         params = SearchParams(
             min_age=min_age, max_age=max_age, min_value=min_value, max_value=max_value,
-            position=code, season=season, min_minutes=min_minutes, limit=limit,
+            positions=tuple(codes), competition_id=competition, season=season,
+            min_minutes=min_minutes, sort=sort, limit=limit,
         )  # fmt: skip
         db = request.app.state.con.cursor()
         try:
@@ -105,6 +115,25 @@ def create_app(
             "attribution": sources,
         }
 
+    @app.get("/api/players/{player_id}")
+    def player(request: Request, player_id: int) -> Any:
+        detail = player_detail(request.app.state.con, player_id, public=settings.public_mode)
+        if detail is None:
+            return _error("player not found", 404)
+        return {"success": True, "player": detail}
+
+    @app.get("/api/meta")
+    def meta(request: Request) -> dict[str, Any]:
+        con = request.app.state.con
+        return {
+            "success": True,
+            "public_mode": settings.public_mode,
+            "positions": POSITIONS,
+            "sorts": list(SORTS),
+            "attribution": attributions(con, settings.public_mode),
+            **catalogue(con, public=settings.public_mode),
+        }
+
     @app.get("/api/positions")
     def positions() -> dict[str, Any]:
         return {"success": True, "positions": POSITIONS}
@@ -113,8 +142,20 @@ def create_app(
     def health() -> dict[str, Any]:
         return {"success": True, "message": "API is running", "public_mode": settings.public_mode}
 
-    if FRONTEND_DIR.exists():  # serve the static frontend from the same origin
-        app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+    if WEB_DIST.exists():  # React single-page app; client-side routes fall back to index.html
+        app.mount("/assets", StaticFiles(directory=WEB_DIST / "assets"), name="assets")
+
+        @app.get("/{path:path}", include_in_schema=False)
+        def spa(path: str) -> Any:
+            if path.startswith("api/"):
+                return _error("not found", 404)
+            file = (WEB_DIST / path).resolve()
+            if path and file.is_file() and WEB_DIST.resolve() in file.parents:
+                return FileResponse(file)
+            return FileResponse(WEB_DIST / "index.html")
+
+    elif LEGACY_FRONTEND.exists():  # old static pages until web/ is built
+        app.mount("/", StaticFiles(directory=LEGACY_FRONTEND, html=True), name="frontend")
 
     return app
 
