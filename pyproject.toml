@@ -37,7 +37,7 @@ packages = ["wescout"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-extend-exclude = ["legacy", "app.py", "app_v2.py", "dataclass.py", "manual_player_list.py", "ml.py", "sofascore.py", "start.py", "transfermarkt_scrapper.py", "test.py"]
+extend-exclude = ["legacy"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
