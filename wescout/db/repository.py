@@ -197,7 +197,7 @@ def add_match_review(
         "INSERT INTO match_reviews (source, source_player_id, candidate_player_id, score, reason)"
         " VALUES (?, ?, ?, ?, ?) ON CONFLICT (source, source_player_id) DO UPDATE SET"
         " candidate_player_id = excluded.candidate_player_id, score = excluded.score,"
-        " reason = excluded.reason, created_at = current_timestamp",
+        " reason = excluded.reason, created_at = excluded.created_at",
         [source, source_player_id, candidate_player_id, score, reason],
     )
 
