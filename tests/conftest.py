@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import socket
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -30,3 +31,14 @@ def load_fixture() -> Any:
         return path.read_text(encoding="utf-8")
 
     return _load
+
+
+@pytest.fixture
+def db() -> Iterator[Any]:
+    from wescout.db.connection import connect
+
+    con = connect(":memory:")
+    try:
+        yield con
+    finally:
+        con.close()

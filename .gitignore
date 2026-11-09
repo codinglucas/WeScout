@@ -28,3 +28,6 @@ cache/
 .DS_Store
 .idea/
 .vscode/
+
+# Scraper providers: local personal use only, never pushed (see CLAUDE.md)
+local_providers/
