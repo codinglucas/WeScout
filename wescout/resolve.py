@@ -90,7 +90,10 @@ def resolve_players(
     # 3. Fuzzy matching for the rest.
     pending = con.execute(
         "SELECT source, source_player_id, name, first_name, last_name, date_of_birth"
-        " FROM source_players WHERE player_id IS NULL AND source <> ?",
+        " FROM source_players sp WHERE player_id IS NULL AND source <> ?"
+        # Rows waiting in match_reviews are left for a human (or a re-import).
+        " AND NOT EXISTS (SELECT 1 FROM match_reviews r"
+        "  WHERE r.source = sp.source AND r.source_player_id = sp.source_player_id)",
         [ANCHOR_SOURCE],
     ).fetchall()
     if not pending:

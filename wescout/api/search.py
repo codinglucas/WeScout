@@ -7,6 +7,7 @@ set of sources (license <> 'local_scrape'), so scraped rows can't leak into any 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from typing import Any
 
 import duckdb
@@ -139,6 +140,59 @@ def _per90(count: Any, minutes: Any) -> float | None:
     return round(float(count) * 90 / float(minutes), 2)
 
 
+RATINGS_SQL = """
+SELECT sp.player_id, r.season_start_year,
+       coalesce(sum(r.rating * r.minutes) / nullif(sum(r.minutes), 0), avg(r.rating)) AS rating,
+       sum(r.minutes) AS minutes,
+       list(r.club_name ORDER BY r.minutes DESC NULLS LAST) AS clubs
+FROM player_season_ratings r
+JOIN source_players sp USING (source, source_player_id)
+WHERE sp.player_id IN (SELECT unnest($ids)) AND r.source = $source
+  AND r.season_start_year BETWEEN $first AND $last
+GROUP BY ALL
+ORDER BY sp.player_id, r.season_start_year DESC
+"""
+
+
+def last_completed_seasons(today: date, n: int = 3) -> list[int]:
+    """Start years of the last n completed European seasons (Aug-May).
+    On 2026-11-09 the last completed season is 2025/26 -> [2025, 2024, 2023]."""
+    last = today.year - 1 if today.month >= 7 else today.year - 2
+    return [last - i for i in range(n)]
+
+
+def season_label(start_year: int) -> str:
+    return f"{start_year}/{(start_year + 1) % 100:02d}"
+
+
+def sofascore_ratings(
+    con: duckdb.DuckDBPyConnection, player_ids: list[int], today: date | None = None
+) -> dict[int, list[dict[str, Any]]]:
+    """Hand-imported SofaScore ratings (local-only). Callers must not use this in public mode."""
+    if not player_ids:
+        return {}
+    seasons = last_completed_seasons(today or date.today())
+    try:
+        rows = con.execute(
+            RATINGS_SQL,
+            {"ids": player_ids, "source": "sofascore_manual",
+             "first": min(seasons), "last": max(seasons)},
+        ).fetchall()  # fmt: skip
+    except duckdb.CatalogException:  # database created before migration 002
+        return {}
+    out: dict[int, list[dict[str, Any]]] = {}
+    for pid, season, rating, minutes, clubs in rows:
+        out.setdefault(pid, []).append(
+            {
+                "season": season_label(season),
+                "rating": round(float(rating), 2),
+                "minutes": int(minutes) if minutes is not None else None,
+                "clubs": [c for c in clubs if c],
+            }
+        )
+    return out
+
+
 def search_players(
     con: duckdb.DuckDBPyConnection, params: SearchParams, *, public: bool
 ) -> tuple[list[dict[str, Any]], int | None]:
@@ -163,8 +217,12 @@ def search_players(
         },
     )
     columns = [d[0] for d in rows.description]
+    results = rows.fetchall()
+    ratings: dict[int, list[dict[str, Any]]] = {}
+    if not public:  # local-only data never reaches a public response
+        ratings = sofascore_ratings(cursor, [int(v[0]) for v in results])
     out = []
-    for values in rows.fetchall():
+    for values in results:
         r = dict(zip(columns, values, strict=True))
         minutes = r["minutes"]
         accurate, total = r["accurate_passes"], r["total_passes"]
@@ -197,6 +255,7 @@ def search_players(
                 "pass_completion": round(accurate * 100 / total, 1)
                 if accurate is not None and total
                 else None,
+                "sofascore_ratings": ratings.get(r["player_id"], []),
             }
         )
     return out, season

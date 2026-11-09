@@ -221,6 +221,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--transfers", action="store_true", help="also load club transfers")
     parser.add_argument("--max-requests", type=int, default=None, help="stop after N requests")
     parser.add_argument("--resolve-only", action="store_true", help="only run ID matching")
+    parser.add_argument(
+        "--import-sofascore",
+        type=Path,
+        metavar="CSV",
+        help="import hand-collected SofaScore season ratings (local-only data)",
+    )
     parser.add_argument("--db", type=Path, default=None)
     # Filters for local scraper providers (search-based).
     parser.add_argument("--position")
@@ -233,6 +239,20 @@ def main(argv: list[str] | None = None) -> int:
     settings = load_settings()
     con = connect(args.db or settings.db_path)
     manual = settings.data_dir / MANUAL_MATCHES
+
+    if args.import_sofascore:
+        from wescout.importers import CsvFormatError, import_ratings_csv
+
+        try:
+            result = import_ratings_csv(con, args.import_sofascore)
+        except (FileNotFoundError, CsvFormatError) as exc:
+            log.error("%s", exc)
+            return 1
+        print(json.dumps({k: v for k, v in asdict(result).items() if k != "skipped_rows"}
+                         | {"skipped_rows": len(result.skipped_rows)}))  # fmt: skip
+        if result.review:
+            log.info("%d player(s) need review: see the match_reviews table", result.review)
+        return 0
 
     if args.resolve_only:
         stats = resolve_players(con, manual)

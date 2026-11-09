@@ -81,6 +81,35 @@ uv run ruff check . && uv run ruff format --check . && uv run mypy wescout
 
 CI runs the same commands on every push and pull request (`.github/workflows/ci.yml`).
 
+### Local-only: SofaScore ratings from a CSV
+
+You can add SofaScore season ratings for your own local use. WeScout never fetches them; it
+only reads a file you fill in, `data/sofascore_ratings.csv` (git-ignored):
+
+```
+player_name,club,season,rating,minutes,date_of_birth
+Manuel Akanji,Manchester City,2024/25,7.05,2380,
+```
+
+- One row is one player, one season and one club. The rating covers all competitions.
+- `date_of_birth` is optional; it makes matching certain.
+
+```bash
+uv run python -m wescout.etl --import-sofascore data/sofascore_ratings.csv
+```
+
+How rows are matched:
+- With a date of birth, the importer uses the normal matcher.
+- Without one, a row is linked only when its name clearly identifies one player at that club.
+  Anything else goes to `match_reviews` instead of being guessed.
+- To resolve a review, add a line to `data/manual_matches.csv`
+  (`sofascore_manual,<id>,api_football,<api-football id>,note`) and run `--resolve-only`.
+
+With `PUBLIC_MODE=false`, every search result gets `sofascore_ratings` for the last 3
+completed seasons (minutes-weighted when a player had two clubs in a season). In public mode the
+list is always empty. Re-importing the file replaces each listed player's rows, so edits are
+picked up.
+
 ## Data sources and licensing
 
 | Source | License | Used for | In public demo |
@@ -88,6 +117,7 @@ CI runs the same commands on every push and pull request (`.github/workflows/ci.
 | [API-Football](https://www.api-football.com) | Licensed (API key) | players, season stats, clubs, transfers | yes, with attribution |
 | [StatsBomb open data](https://github.com/statsbomb/open-data) | Open data licence | planned | yes, with attribution |
 | Transfermarkt, SofaScore | Terms prohibit scraping | local experiments only | **never** |
+| Hand-filled SofaScore ratings CSV | `local_scrape` (local only) | ratings for the last 3 seasons in local searches | **never** |
 
 - The scraper code isn't in this repository. It lives in a git-ignored `local_providers/`
   folder and only loads with `ENABLE_LOCAL_SCRAPERS=true`. It uses an honest User-Agent, waits

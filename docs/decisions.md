@@ -175,3 +175,26 @@ The schema supports any of these (`market_values`, `transfers`, and `valued_at` 
 - Tests use trimmed recorded API-Football fixtures (`tests/fixtures/`). Scraper fixtures are
   hand-written, because the sites refuse to answer, and live in the git-ignored
   `local_providers/tests/`.
+
+## ADR-009 — SofaScore ratings via a hand-filled CSV, not scraping
+
+**Context (2026-11-09):** you asked for each player's SofaScore rating for the last 3
+completed seasons, for local use only. SofaScore returned 403 to plain HTTP and also to a
+headless Firefox driven by Selenium. Getting past that would mean evading bot detection, which
+we don't do.
+
+**Chosen:** `--import-sofascore CSV` reads a file the user fills in. Details:
+- Rows are stored in a separate table, `player_season_ratings`, under source
+  `sofascore_manual` with license `local_scrape`.
+- In private mode the search adds `sofascore_ratings` for the last 3 completed seasons (all
+  competitions, minutes-weighted). In public mode the list is always empty.
+
+**Matching without a date of birth:** a row links automatically only when the name scores at
+least 0.90 against a player who played for the same club, and beats the next-best name at that
+club by at least 0.10. Otherwise it goes to review: for example, two "Gabriel"s at Arsenal. Rows
+in review are skipped by the general resolver, so they never turn into duplicate players.
+
+**Rejected:**
+- Storing these rows in `player_season_stats`: they cover all competitions, so they would
+  double-count minutes in the league numbers.
+- Fetching on search requests: the API reads only from the database.
