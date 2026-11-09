@@ -41,8 +41,25 @@ flowchart LR
 uv sync                                   # Python ≥ 3.12, pinned via uv.lock
 cp .env.example .env                      # add API_FOOTBALL_KEY
 uv run python -m wescout.etl --seasons 2023            # resumable; re-run daily on the free plan
-uv run uvicorn wescout.api.main:app --port 5050        # API + frontend at http://localhost:5050
+(cd web && npm ci && npm run build)                    # build the React app once
+uv run uvicorn wescout.api.main:app --port 5050        # API + app at http://localhost:5050
 ```
+
+### Web app
+
+React + TypeScript (Vite) in `web/`. FastAPI serves the built files from `web/dist`, so the
+production app and the API share one origin, with no CORS or second server.
+
+- **Scout:** click positions on a 4-2-3-1 pitch (several at once, or a whole line), then
+  filter by league, season, age and minimum minutes, and sort the result cards. The filters
+  live in the URL, so any search can be shared or bookmarked.
+- **Player profile:** key facts, per-90 bars, rating by season, a season stats table, and
+  transfers.
+- **Shortlist:** players saved in your browser.
+- Dark and light themes, and a phone layout.
+
+To develop with hot reload, run the API on :5050 and then `cd web && npm run dev`
+(http://localhost:5173). Vite proxies `/api` to the API.
 
 ### ETL
 
@@ -66,7 +83,9 @@ run prints a JSON summary: records, runtime, requests used and quota left.
 
 | Route | Notes |
 |---|---|
-| `GET /api/players/search` | `min_age`, `max_age`, `min_value`, `max_value`, `position` (gk, cb, lb, …), `season`, `min_minutes`, `limit` |
+| `GET /api/players/search` | `min_age`, `max_age`, `min_value`, `max_value`, `position` or `positions` (comma list: gk, cb, lb, …), `competition`, `season`, `min_minutes`, `sort` (rating, minutes, goals, assists, age), `limit` |
+| `GET /api/players/{id}` | profile, seasons with per-90 stats, transfers |
+| `GET /api/meta` | loaded leagues and seasons with player counts, positions, sorts, attribution |
 | `GET /api/positions` | position codes used by the frontend |
 | `GET /api/health` | status + whether public mode is on |
 
@@ -150,7 +169,8 @@ wescout/
   resolve.py           assigns canonical player IDs in the DB
   etl.py               CLI: python -m wescout.etl
   api/                 FastAPI app + search query
-frontend/              static HTML/CSS/JS (served by the API)
+web/                   React + TypeScript app (Vite); built to web/dist and served by the API
+frontend/              legacy static pages (served only when web/dist isn't built)
 scripts/               benchmark_search.py, eval_matching.py
 eval/match_labels.csv  hand-labelled pairs for matching precision/recall
 tests/                 pytest, recorded fixtures only

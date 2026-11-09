@@ -198,3 +198,26 @@ in review are skipped by the general resolver, so they never turn into duplicate
 - Storing these rows in `player_season_stats`: they cover all competitions, so they would
   double-count minutes in the league numbers.
 - Fetching on search requests: the API reads only from the database.
+
+## ADR-010 — React + Vite frontend served by FastAPI
+
+**Chosen:** React 19 + TypeScript (strict) + Vite in `web/`, built to static files that
+FastAPI serves (any unknown path falls back to `index.html`, so client routes like
+`/player/642` work on reload). No UI kit or chart library: the pitch, bars and season chart are
+hand-written SVG/CSS (about 90 KB of gzipped JS in total).
+
+**Rejected:**
+- Extending the legacy vanilla pages: no types or components, and they were getting hard to
+  change.
+- Next.js: server-side rendering isn't needed for a precomputed, read-only demo, and it would
+  add a second server.
+- A component library: more weight than three pages need.
+
+**Choices worth knowing:**
+- Search state lives in the URL, so every search can be shared and the browser's back button
+  works.
+- The shortlist is kept in the browser's `localStorage`. There are no accounts in the demo.
+- No player photos: API-Football serves them, but the terms for reusing images in a public
+  demo aren't clear, so the cards use coloured initials instead.
+- Positions are coarse (GK/DEF/MID/FWD). The pitch says so instead of pretending that LB means
+  left-backs only.
