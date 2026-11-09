@@ -1,57 +1,179 @@
 # WeScout
 
+**Live demo:** _coming soon_ · ![demo GIF placeholder](docs/demo.gif)
+
 > **Disclaimer:** This project is a personal, educational exercise built for learning purposes (web scraping, APIs, data handling, and basic frontend/backend integration). It is **not** a commercial product, and there is **no intent to commercialize, sell, or monetize** it in any way. It scrapes publicly viewable data from Transfermarkt and SofaScore for personal, non-commercial use only, and is not affiliated with, endorsed by, or sponsored by either site. Use of this code is subject to those sites' respective terms of service.
 
-WeScout is a football (soccer) scouting tool that combines player data scraped from **Transfermarkt** (market value, club, basic bio) with detailed performance statistics pulled from **SofaScore** (ratings, goals, assists, tackles, passing, etc.), and exposes it through a Flask API and a simple web dashboard.
+WeScout is a football scouting tool. A data pipeline pulls player and season statistics from a
+licensed API into a local DuckDB database, matches the same player across sources, and serves
+filtered searches (position, age, value, minutes) from a FastAPI backend in milliseconds. The
+old version scraped live on every request and took minutes. Phase 2 adds per-90 analytics and
+a model that predicts how a player's value will change over two years.
 
-## How it works
+## Architecture
 
-1. **Player discovery (`transfermarkt_scrapper.py`)** — Submits a filtered search (age range, market value, position) to Transfermarkt's advanced player search and parses the results table with BeautifulSoup into a list of `Player` objects. A curated fallback list is also available via `manual_player_list.py` for testing without hitting Transfermarkt.
-2. **Stat enrichment (`sofascore.py`)** — Uses Selenium to drive a browser against SofaScore:
-   - Matches each Transfermarkt player to their SofaScore player ID (`match_id`).
-   - Pulls the player's recent seasons (current year + prior two) per competition (`retrieve_year_based_seasons`).
-   - Fetches season/competition statistics via SofaScore's internal API using an in-page `fetch` call (`fetch_json`).
-   - Caches lookups to disk (`player_cache.json`) to avoid re-scraping the same players.
-3. **Data model (`dataclass.py`)** — A `Player` dataclass holds identity fields (name, club, value, SofaScore ID) plus per-season stats (rating, goals, assists, key passes, minutes played, tackles, interceptions, dribbled past, big chances created, accurate/total passes) and a `seasons` list.
-4. **API (`app.py`)** — A Flask + Flask-CORS backend exposing:
-   - `GET /api/players/search` — filter players by age, market value, and position, returning enriched stats as JSON.
-   - `GET /api/positions` — list of supported position codes (GK through CF).
-   - `GET /api/health` — basic health check.
-5. **Frontend (`index.html`, `dashboard.html`, `login.html`, `lists.html` + matching `.css`/`.js`)** — A static HTML/CSS/JS dashboard that calls the Flask API (`api-service.js`) to search and display players.
-6. **Experimental (`ml.py`)** — Early-stage work computing league-average stats (e.g. average goals) per competition, intended as a first step toward a model that projects how a player's output would translate to a different league.
+```mermaid
+flowchart LR
+    subgraph Providers
+        AF["API-Football<br/>(licensed)"]
+        SB["StatsBomb open data<br/>(planned)"]
+        LP["local_providers/<br/>Transfermarkt, SofaScore<br/>(local only, git-ignored)"]
+    end
+    AF & SB & LP --> HC["Shared HTTP client<br/>rate limit · raw cache · quota · backoff"]
+    HC --> ETL["ETL (python -m wescout.etl)<br/>checkpoints · idempotent upserts"]
+    ETL --> DB[("DuckDB<br/>data/wescout.duckdb")]
+    ETL --> M["ID matching<br/>names + DOB + club → auto / review / new"]
+    M --> DB
+    DB --> API["FastAPI<br/>/api/players/search<br/>PUBLIC_MODE filter in SQL"]
+    API --> FE["Static frontend<br/>(frontend/)"]
+```
 
-## Tech stack
+- **Providers** turn each source's payloads into typed records. They never touch the database.
+- **The ETL** is the only code that calls providers. The API never does: every search is a
+  single SQL query.
+- **Facts are keyed by the provider's own IDs**, and one column links them to a canonical
+  player. Re-matching a player never rewrites data.
+  See [`docs/decisions.md`](docs/decisions.md) (ADR-003).
 
-- **Backend:** Python, Flask, Flask-CORS
-- **Scraping:** Selenium (SofaScore), Requests + BeautifulSoup (Transfermarkt)
-- **Data:** Python dataclasses, Pandas (DataFrame assembly in the API layer)
-- **Frontend:** HTML, CSS, vanilla JavaScript
+## Quick start
+
+```bash
+uv sync                                   # Python ≥ 3.12, pinned via uv.lock
+cp .env.example .env                      # add API_FOOTBALL_KEY
+uv run python -m wescout.etl --seasons 2023            # resumable; re-run daily on the free plan
+uv run uvicorn wescout.api.main:app --port 5050        # API + frontend at http://localhost:5050
+```
+
+### ETL
+
+```bash
+uv run python -m wescout.etl --competitions 39,140 --seasons 2022,2023 --transfers
+uv run python -m wescout.etl --max-requests 20     # cap the requests used by this run
+uv run python -m wescout.etl --resolve-only        # re-run ID matching only
+```
+
+Default leagues: Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Eredivisie, Primeira
+Liga and Brasileirão. On API-Football's free plan the limits are:
+- 100 requests per day;
+- seasons 2022–2024 only;
+- at most 3 pages per query.
+
+So the ETL loads league by league and club by club, about 50 requests per league-season. When
+the quota runs out it stops cleanly, and the next run continues from the last checkpoint. Each
+run prints a JSON summary: records, runtime, requests used and quota left.
+
+### API
+
+| Route | Notes |
+|---|---|
+| `GET /api/players/search` | `min_age`, `max_age`, `min_value`, `max_value`, `position` (gk, cb, lb, …), `season`, `min_minutes`, `limit` |
+| `GET /api/positions` | position codes used by the frontend |
+| `GET /api/health` | status + whether public mode is on |
+
+Interactive docs at `/docs`. (On macOS, port 5000 is taken by AirPlay Receiver, so use another port; the frontend calls the API on the same origin.)
+
+### Tests and checks
+
+```bash
+uv run pytest            # no network: a socket guard fails any test that tries
+uv run ruff check . && uv run ruff format --check . && uv run mypy wescout
+```
+
+CI runs the same commands on every push and pull request (`.github/workflows/ci.yml`).
+
+### Local-only: SofaScore ratings from a CSV
+
+You can add SofaScore season ratings for your own local use. WeScout never fetches them; it
+only reads a file you fill in, `data/sofascore_ratings.csv` (git-ignored):
+
+```
+player_name,club,season,rating,minutes,date_of_birth
+Manuel Akanji,Manchester City,2024/25,7.05,2380,
+```
+
+- One row is one player, one season and one club. The rating covers all competitions.
+- `date_of_birth` is optional; it makes matching certain.
+
+```bash
+uv run python -m wescout.etl --import-sofascore data/sofascore_ratings.csv
+```
+
+How rows are matched:
+- With a date of birth, the importer uses the normal matcher.
+- Without one, a row is linked only when its name clearly identifies one player at that club.
+  Anything else goes to `match_reviews` instead of being guessed.
+- To resolve a review, add a line to `data/manual_matches.csv`
+  (`sofascore_manual,<id>,api_football,<api-football id>,note`) and run `--resolve-only`.
+
+With `PUBLIC_MODE=false`, every search result gets `sofascore_ratings` for the last 3
+completed seasons (minutes-weighted when a player had two clubs in a season). In public mode the
+list is always empty. Re-importing the file replaces each listed player's rows, so edits are
+picked up.
+
+## Data sources and licensing
+
+| Source | License | Used for | In public demo |
+|---|---|---|---|
+| [API-Football](https://www.api-football.com) | Licensed (API key) | players, season stats, clubs, transfers | yes, with attribution |
+| [StatsBomb open data](https://github.com/statsbomb/open-data) | Open data licence | planned | yes, with attribution |
+| Transfermarkt, SofaScore | Terms prohibit scraping | local experiments only | **never** |
+| Hand-filled SofaScore ratings CSV | `local_scrape` (local only) | ratings for the last 3 seasons in local searches | **never** |
+
+- The scraper code isn't in this repository. It lives in a git-ignored `local_providers/`
+  folder and only loads with `ENABLE_LOCAL_SCRAPERS=true`. It uses an honest User-Agent, waits
+  at least 2 s between requests, runs nothing in parallel, and caches responses. When a site
+  refuses (both currently do), the code stops; it never works around a block.
+- `PUBLIC_MODE=true` is the default. It removes every scraped value, position and player from
+  API responses, and is enforced in SQL.
+- No scraped data is used to train or evaluate models.
+- No data is committed: `data/`, `*.duckdb`, caches and `.env` are git-ignored.
+
+## Measured results
+
+Full method in [`docs/benchmarks.md`](docs/benchmarks.md).
+
+| Metric | Before (Flask + live scraping) | After (FastAPI + DuckDB) |
+|---|---|---|
+| Search latency | ~3 min estimated (endpoint actually returned HTTP 500) | **~6 ms** median, < 7 ms p95 |
+| Third-party requests per search | ~200–300 | 0 |
+| ID matching (21 labelled pairs) | regex on page text | precision 1.00, recall 0.81 |
 
 ## Project structure
 
 ```
-dataclass.py                 # Player dataclass (shared data model)
-transfermarkt_scrapper.py    # Transfermarkt search + parsing -> list[Player]
-manual_player_list.py        # Hardcoded player list for testing
-sofascore.py                 # SofaScore ID matching, season/stat scraping, caching
-ml.py                        # Experimental league-average stats / projection work
-start.py                     # Early standalone Transfermarkt scraping script
-app.py / app_v2.py           # Flask API
-index.html, dashboard.html,  # Frontend pages
-login.html, lists.html
-*.css, *.js                  # Frontend styling and API client
+wescout/
+  config.py            settings from env (.env)
+  models.py            typed records shared by providers, DB and API
+  providers/           Provider protocol, shared HTTP client, API-Football, registry
+  db/                  migrations (SQL), connection + runner, upserts, integrity checks
+  matching.py          name normalisation, scoring, manual overrides
+  resolve.py           assigns canonical player IDs in the DB
+  etl.py               CLI: python -m wescout.etl
+  api/                 FastAPI app + search query
+frontend/              static HTML/CSS/JS (served by the API)
+scripts/               benchmark_search.py, eval_matching.py
+eval/match_labels.csv  hand-labelled pairs for matching precision/recall
+tests/                 pytest, recorded fixtures only
+docs/                  benchmarks.md, decisions.md
 ```
 
-## Running locally
+## Roadmap
 
-1. Install Python dependencies: `flask`, `flask-cors`, `selenium`, `requests`, `beautifulsoup4`, `pandas`.
-2. Make sure a Selenium-compatible browser driver (e.g. geckodriver for Firefox) is installed and on your `PATH`.
-3. Start the API:
-   ```
-   python app.py
-   ```
-4. Open `index.html` (or serve the frontend files with a static server) — it talks to the API at `http://localhost:5000/api` by default (see `api-service.js`).
+1. **Data foundation** (this phase): providers → DuckDB → ETL → API. ✅
+2. **Analytics + ML:** per-90 stats, percentiles by position and league, role scores, similar
+   players, and the two-year value-growth model. The model is evaluated on a time-based split
+   against naive baselines.
+3. **Product:** a clickable 4-2-3-1 pitch for picking positions and roles.
+4. **Bonus:** natural-language search, where an LLM translates text into a structured query.
+   The LLM never names players or invents stats.
 
-## Status / notes
+## Limitations
 
-This is an active, evolving project. Some files (`start.py`, `test.py`, `app_v2.py`) reflect earlier iterations kept alongside the current versions. `ml.py` is a work-in-progress toward a cross-league player projection model.
+- **Free-plan coverage.** Seasons are 2022–2024 only, and a full 8-league season needs about 4
+  days of quota.
+- **Coarse positions.** API-Football reports only GK/DF/MF/FW, so a search for `lb` falls back
+  to all defenders when no detailed position is known.
+- **No licensed market values yet.** In public mode the value filter has nothing to apply to,
+  and the Phase 2 target is still open (ADR-006).
+- **Some legacy stats are missing.** Pass completion and big chances created aren't available
+  from API-Football at season level.

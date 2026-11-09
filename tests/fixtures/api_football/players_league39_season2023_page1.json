@@ -1,0 +1,469 @@
+{
+ "get": "players",
+ "parameters": {
+  "league": "39",
+  "season": "2023"
+ },
+ "errors": [],
+ "results": 4,
+ "paging": {
+  "current": 1,
+  "total": 51
+ },
+ "response": [
+  {
+   "player": {
+    "id": 5,
+    "name": "M. Akanji",
+    "firstname": "Manuel Obafemi",
+    "lastname": "Akanji",
+    "age": 30,
+    "birth": {
+     "date": "1995-07-19",
+     "place": "Neftenbach",
+     "country": "Switzerland"
+    },
+    "nationality": "Switzerland",
+    "height": "188",
+    "weight": "91",
+    "injured": false,
+    "photo": "https://media.api-sports.io/football/players/5.png"
+   },
+   "statistics": [
+    {
+     "team": {
+      "id": 50,
+      "name": "Manchester City",
+      "logo": "https://media.api-sports.io/football/teams/50.png"
+     },
+     "league": {
+      "id": 39,
+      "name": "Premier League",
+      "country": "England",
+      "logo": "https://media.api-sports.io/football/leagues/39.png",
+      "flag": "https://media.api-sports.io/flags/gb-eng.svg",
+      "season": 2023
+     },
+     "games": {
+      "appearences": 34,
+      "lineups": 32,
+      "minutes": 2514,
+      "number": null,
+      "position": "Defender",
+      "rating": "7.279310",
+      "captain": false
+     },
+     "substitutes": {
+      "in": 2,
+      "out": null,
+      "bench": null
+     },
+     "shots": {
+      "total": 11,
+      "on": 5
+     },
+     "goals": {
+      "total": 2,
+      "conceded": 0,
+      "assists": 0,
+      "saves": null
+     },
+     "passes": {
+      "total": 2296,
+      "key": 13,
+      "accuracy": 74
+     },
+     "tackles": {
+      "total": 42,
+      "blocks": 12,
+      "interceptions": 23
+     },
+     "duels": {
+      "total": 162,
+      "won": 90
+     },
+     "dribbles": {
+      "attempts": 4,
+      "success": 2,
+      "past": null
+     },
+     "fouls": {
+      "drawn": 19,
+      "committed": 17
+     },
+     "cards": {
+      "yellow": 4,
+      "yellowred": null,
+      "red": 1
+     },
+     "penalty": {
+      "won": null,
+      "commited": null,
+      "scored": 0,
+      "missed": 0,
+      "saved": null
+     }
+    }
+   ]
+  },
+  {
+   "player": {
+    "id": 76,
+    "name": "M. Nakamba",
+    "firstname": "Marvelous",
+    "lastname": "Nakamba",
+    "age": 31,
+    "birth": {
+     "date": "1994-01-19",
+     "place": "Hwange",
+     "country": "Zimbabwe"
+    },
+    "nationality": "Zimbabwe",
+    "height": "177",
+    "weight": "71",
+    "injured": false,
+    "photo": "https://media.api-sports.io/football/players/76.png"
+   },
+   "statistics": [
+    {
+     "team": {
+      "id": 1359,
+      "name": "Luton",
+      "logo": "https://media.api-sports.io/football/teams/1359.png"
+     },
+     "league": {
+      "id": 39,
+      "name": "Premier League",
+      "country": "England",
+      "logo": "https://media.api-sports.io/football/leagues/39.png",
+      "flag": "https://media.api-sports.io/flags/gb-eng.svg",
+      "season": 2023
+     },
+     "games": {
+      "appearences": 13,
+      "lineups": 13,
+      "minutes": 1133,
+      "number": null,
+      "position": "Midfielder",
+      "rating": "6.769230",
+      "captain": false
+     },
+     "substitutes": {
+      "in": 0,
+      "out": 3,
+      "bench": 0
+     },
+     "shots": {
+      "total": 4,
+      "on": null
+     },
+     "goals": {
+      "total": 0,
+      "conceded": 0,
+      "assists": null,
+      "saves": null
+     },
+     "passes": {
+      "total": 415,
+      "key": 7,
+      "accuracy": null
+     },
+     "tackles": {
+      "total": 40,
+      "blocks": 6,
+      "interceptions": 11
+     },
+     "duels": {
+      "total": 113,
+      "won": 56
+     },
+     "dribbles": {
+      "attempts": 8,
+      "success": 3,
+      "past": null
+     },
+     "fouls": {
+      "drawn": 9,
+      "committed": 24
+     },
+     "cards": {
+      "yellow": 5,
+      "yellowred": 0,
+      "red": 0
+     },
+     "penalty": {
+      "won": null,
+      "commited": null,
+      "scored": 0,
+      "missed": 0,
+      "saved": null
+     }
+    },
+    {
+     "team": {
+      "id": 66,
+      "name": "Aston Villa",
+      "logo": "https://media.api-sports.io/football/teams/66.png"
+     },
+     "league": {
+      "id": 39,
+      "name": "Premier League",
+      "country": "England",
+      "logo": "https://media.api-sports.io/football/leagues/39.png",
+      "flag": "https://media.api-sports.io/flags/gb-eng.svg",
+      "season": 2023
+     },
+     "games": {
+      "appearences": 0,
+      "lineups": 0,
+      "minutes": 0,
+      "number": null,
+      "position": "Midfielder",
+      "rating": "6.769230",
+      "captain": false
+     },
+     "substitutes": {
+      "in": 0,
+      "out": 0,
+      "bench": 0
+     },
+     "shots": {
+      "total": 4,
+      "on": null
+     },
+     "goals": {
+      "total": 0,
+      "conceded": 0,
+      "assists": null,
+      "saves": null
+     },
+     "passes": {
+      "total": 415,
+      "key": 7,
+      "accuracy": null
+     },
+     "tackles": {
+      "total": 40,
+      "blocks": 6,
+      "interceptions": 11
+     },
+     "duels": {
+      "total": 113,
+      "won": 56
+     },
+     "dribbles": {
+      "attempts": 8,
+      "success": 3,
+      "past": null
+     },
+     "fouls": {
+      "drawn": 9,
+      "committed": 24
+     },
+     "cards": {
+      "yellow": 0,
+      "yellowred": 0,
+      "red": 0
+     },
+     "penalty": {
+      "won": null,
+      "commited": null,
+      "scored": 0,
+      "missed": 0,
+      "saved": null
+     }
+    }
+   ]
+  },
+  {
+   "player": {
+    "id": 54,
+    "name": "Diego Costa",
+    "firstname": "Diego",
+    "lastname": "da Silva Costa",
+    "age": 37,
+    "birth": {
+     "date": "1988-10-07",
+     "place": "Lagarto",
+     "country": "Brazil"
+    },
+    "nationality": "Spain",
+    "height": "188 cm",
+    "weight": "83 kg",
+    "injured": false,
+    "photo": "https://media.api-sports.io/football/players/54.png"
+   },
+   "statistics": [
+    {
+     "team": {
+      "id": 39,
+      "name": "Wolves",
+      "logo": "https://media.api-sports.io/football/teams/39.png"
+     },
+     "league": {
+      "id": 39,
+      "name": "Premier League",
+      "country": "England",
+      "logo": "https://media.api-sports.io/football/leagues/39.png",
+      "flag": "https://media.api-sports.io/flags/gb-eng.svg",
+      "season": 2023
+     },
+     "games": {
+      "appearences": null,
+      "lineups": null,
+      "minutes": null,
+      "number": null,
+      "position": "Attacker",
+      "rating": null,
+      "captain": false
+     },
+     "substitutes": {
+      "in": null,
+      "out": null,
+      "bench": null
+     },
+     "shots": {
+      "total": null,
+      "on": null
+     },
+     "goals": {
+      "total": null,
+      "conceded": null,
+      "assists": null,
+      "saves": null
+     },
+     "passes": {
+      "total": null,
+      "key": null,
+      "accuracy": null
+     },
+     "tackles": {
+      "total": null,
+      "blocks": null,
+      "interceptions": null
+     },
+     "duels": {
+      "total": null,
+      "won": null
+     },
+     "dribbles": {
+      "attempts": null,
+      "success": null,
+      "past": null
+     },
+     "fouls": {
+      "drawn": null,
+      "committed": null
+     },
+     "cards": {
+      "yellow": null,
+      "yellowred": null,
+      "red": null
+     },
+     "penalty": {
+      "won": null,
+      "commited": null,
+      "scored": null,
+      "missed": null,
+      "saved": null
+     }
+    }
+   ]
+  },
+  {
+   "player": {
+    "id": 62,
+    "name": "E. Horvath",
+    "firstname": "Ethan Shea",
+    "lastname": "Horvath",
+    "age": 30,
+    "birth": {
+     "date": "1995-06-09",
+     "place": "Highlands Ranch",
+     "country": "USA"
+    },
+    "nationality": "USA",
+    "height": "191",
+    "weight": "84",
+    "injured": false,
+    "photo": "https://media.api-sports.io/football/players/62.png"
+   },
+   "statistics": [
+    {
+     "team": {
+      "id": 65,
+      "name": "Nottingham Forest",
+      "logo": "https://media.api-sports.io/football/teams/65.png"
+     },
+     "league": {
+      "id": 39,
+      "name": "Premier League",
+      "country": "England",
+      "logo": "https://media.api-sports.io/football/leagues/39.png",
+      "flag": "https://media.api-sports.io/flags/gb-eng.svg",
+      "season": 2023
+     },
+     "games": {
+      "appearences": 0,
+      "lineups": 0,
+      "minutes": 0,
+      "number": null,
+      "position": "Goalkeeper",
+      "rating": null,
+      "captain": false
+     },
+     "substitutes": {
+      "in": 0,
+      "out": 0,
+      "bench": 4
+     },
+     "shots": {
+      "total": null,
+      "on": null
+     },
+     "goals": {
+      "total": 0,
+      "conceded": 0,
+      "assists": null,
+      "saves": null
+     },
+     "passes": {
+      "total": null,
+      "key": null,
+      "accuracy": null
+     },
+     "tackles": {
+      "total": null,
+      "blocks": null,
+      "interceptions": null
+     },
+     "duels": {
+      "total": null,
+      "won": null
+     },
+     "dribbles": {
+      "attempts": null,
+      "success": null,
+      "past": null
+     },
+     "fouls": {
+      "drawn": null,
+      "committed": null
+     },
+     "cards": {
+      "yellow": 0,
+      "yellowred": 0,
+      "red": 0
+     },
+     "penalty": {
+      "won": null,
+      "commited": null,
+      "scored": 0,
+      "missed": 0,
+      "saved": 0
+     }
+    }
+   ]
+  }
+ ]
+}

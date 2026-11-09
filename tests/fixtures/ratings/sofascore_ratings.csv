@@ -1,0 +1,10 @@
+# Test fixture: invented ratings, not real SofaScore data.
+player_name,club,season,rating,minutes,date_of_birth
+Manuel Akanji,Manchester City,2023/24,7.10,2000,
+Manuel Akanji,Manchester City,2024/25,7.30,1000,
+Manuel Akanji,Manchester City,24/25,7.30,1000,
+Danilo,Juventus,2023,7.00,2500,1991-07-15
+Gabriel,Arsenal,2023/24,7.20,3000,
+Unknown Kid,Nowhere FC,2023/24,6.50,300,
+Bad Row,Arsenal,2023/24,eleven,100,
+Manuel Akanji,Manchester City,2020/21,6.90,1500,

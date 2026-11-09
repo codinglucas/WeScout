@@ -1,0 +1,27 @@
+# Hand-labelled pairs for ID-matching evaluation. Extend to ~200 rows.
+# One row = one pair of player records from two sources. is_match: 1 = same person, 0 = different.
+# IDs are optional (the evaluator scores the attributes); fill them when known so pairs can be
+# checked against the database later. Dates: YYYY-MM-DD, empty if the source has none.
+# clubs: '|' separated club names that source shows for the same season.
+left_source,left_id,left_name,left_first,left_last,left_dob,left_clubs,right_source,right_id,right_name,right_dob,right_clubs,is_match,note
+api_football,5,M. Akanji,Manuel Obafemi,Akanji,1995-07-19,Manchester City,transfermarkt,,Manuel Akanji,1995-07-19,Manchester City,1,initial vs full name
+api_football,,B. Šeško,Benjamin,Šeško,2003-05-31,RB Leipzig,sofascore,,Benjamin Sesko,2003-05-31,RB Leipzig,1,diacritics stripped
+api_football,,M. Ødegaard,Martin,Ødegaard,1998-12-17,Arsenal,transfermarkt,,Martin Odegaard,1998-12-17,Arsenal FC,1,Ø transliteration + club suffix
+api_football,,İ. Gündoğan,İlkay,Gündoğan,1990-10-24,Barcelona,sofascore,,Ilkay Gündogan,1990-10-24,FC Barcelona,1,Turkish letters
+api_football,,Vinícius Júnior,Vinícius José,Paixão de Oliveira Júnior,2000-07-12,Real Madrid,transfermarkt,,Vinicius Junior,2000-07-12,Real Madrid,1,long Portuguese name vs short
+api_football,,Heung-Min Son,Heung-Min,Son,1992-07-08,Tottenham,sofascore,,Son Heung-min,1992-07-08,Tottenham Hotspur,1,name order
+api_football,,A. Isak,Alexander,Isak,1999-09-21,Newcastle,transfermarkt,,Alexander Isak,1999-09-21,Newcastle United,1,initial vs full name
+api_football,,F. Wirtz,Florian,Wirtz,2003-05-03,Bayer Leverkusen,sofascore,,Florian Wirtz,2003-03-05,Bayer 04 Leverkusen,1,day/month swapped in one source
+api_football,,V. Osimhen,Victor James,Osimhen,1998-12-29,Napoli,transfermarkt,,Victor Osimhen,,SSC Napoli,1,DOB missing on one side
+api_football,,N. Woltemade,Nick,Woltemade,2002-02-14,Werder Bremen,transfermarkt,,Nick Woltemade,2002-02-14,SV Werder Bremen,1,simple
+api_football,,K. Mbappé,Kylian,Mbappé Lottin,1998-12-20,Paris Saint Germain,sofascore,,Kylian Mbappé,1998-12-20,Paris Saint-Germain,1,extra surname
+api_football,,A. Mitrović,Aleksandar,Mitrović,1994-09-16,Al-Hilal,transfermarkt,,Aleksandar Mitrovic,1994-09-16,Al-Hilal SFC,1,Serbian diacritics
+api_football,,Rodri,Rodrigo,Hernández Cascante,1996-06-22,Manchester City,transfermarkt,,Rodri,1996-06-22,Manchester City,1,nickname vs nickname (first/last differ)
+api_football,,Rodri,,,1996-06-22,Manchester City,sofascore,,Rodrigo Hernández,1996-06-22,Manchester City,1,nickname vs legal name: expected miss
+api_football,,Danilo,Danilo Luiz,da Silva,1991-07-15,Juventus,transfermarkt,,Danilo,2001-04-29,Nottingham Forest,0,same name different players
+api_football,,Danilo,Danilo Luiz,da Silva,1991-07-15,Juventus,transfermarkt,,Danilo,1991-07-15,Juventus FC,1,same name - DOB decides
+api_football,,Gabriel Jesus,Gabriel Fernando,de Jesus,1997-04-03,Arsenal,transfermarkt,,Gabriel Martinelli,2001-06-18,Arsenal FC,0,shared first name and club
+api_football,,Gabriel,Gabriel,dos Santos Magalhães,1997-12-19,Arsenal,sofascore,,Gabriel Jesus,1997-04-03,Arsenal,0,shared first name and club
+api_football,,K. De Bruyne,Kevin,De Bruyne,1991-06-28,Manchester City,transfermarkt,,Kevin Danso,1998-09-19,RC Lens,0,similar names
+api_football,,A. Isak,Alexander,Isak,1999-09-21,Newcastle,sofascore,,Alexander Isak,,Newcastle United,1,DOB missing on one side
+api_football,,Gabriel Jesus,Gabriel Fernando,de Jesus,1997-04-03,Arsenal,sofascore,,Gabriel,,Arsenal,0,namesake without DOB
