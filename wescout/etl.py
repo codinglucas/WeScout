@@ -5,8 +5,8 @@
 
 Resumability: every unit of work (league-season metadata, club list, one squad page, one
 club's transfers) is a row in etl_checkpoints; finished units are skipped on the next run.
-Raw responses are cached on disk, so re-reading page 1 to learn the page count is free. When the daily quota
-runs out the run ends as 'partial'; run the same command again tomorrow.
+Raw responses are cached on disk, so re-reading page 1 to learn the page count is free.
+When the daily quota runs out the run ends as 'partial'; run the same command tomorrow.
 
 Scheduling: the command is safe to run from cron/GitHub Actions as-is (not set up here).
 """
