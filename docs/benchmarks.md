@@ -47,9 +47,27 @@ then, per player, in a Selenium-driven Firefox:
 These are estimates (stated as such), with per-request latencies taken from typical page loads,
 not measured on this machine.
 
-### After: FastAPI + DuckDB
+### After: FastAPI + DuckDB (measured 2026-11-09)
 
-_To be filled in at the end of Phase 1 (`scripts/benchmark_search.py`)._
+Method: `uv run python scripts/benchmark_search.py --url http://localhost:5050`. uvicorn runs on
+the same machine; the database has 2023/24 data for the Premier League and 7 of 20 La Liga
+clubs (see section 3), and `PUBLIC_MODE=true`. Each search runs 5 times to warm up, then
+50 timed runs. The in-process mode (no HTTP) gives the same numbers within 0.3 ms.
+
+| Search | Results | Median (ms) | p95 (ms) |
+|---|---|---|---|
+| LB, age ≤ 23, value ≤ €15M | 23 | 6.3 | 6.5 |
+| CB, age ≤ 21, value ≤ €10M | 7 | 6.2 | 6.4 |
+| ST, age ≤ 25, value ≤ €30M | 50 | 6.4 | 6.6 |
+
+**Before → after:** about 3 minutes (estimated; the endpoint actually returned HTTP 500) →
+**about 6 ms**. Third-party requests per search: about 200–300 → **0**.
+
+Caveats:
+- The data volume is small: about 1,400 players. Re-measure when all 8 leagues and 3 seasons
+  are loaded (about 15k player-seasons); DuckDB is expected to stay in the low milliseconds.
+- In public mode the value filter has no values to apply to, so it doesn't narrow results.
+- `position=lb` falls back to all defenders, because API-Football positions are coarse.
 
 ## 2. API-Football quota (checked 2026-11-09 via `/status` and response headers)
 
@@ -62,7 +80,30 @@ _To be filled in at the end of Phase 1 (`scripts/benchmark_search.py`)._
 
 ## 3. ETL runtime and coverage
 
-_To be filled in by ETL runs._
+| Run | Date | Scope | Status | Requests | Records | Runtime | Notes |
+|---|---|---|---|---|---|---|---|
+| 1 | 2026-11-09 | 8 leagues, 2023 | failed | 5 | 106 | 26 s | discovered free-plan cap: `page` ≤ 3 |
+| 2 | 2026-11-09 | 8 leagues, 2023 | partial | 84 | 2,265 | 541 s | stopped at the quota reserve; resumes tomorrow |
+
+Runtime is dominated by the 6.5 s gap between requests (free plan: 10/minute). That's about
+104 ms of parsing and DB work per page.
+
+Coverage after run 2 (2023/24 season):
+
+| Competition | Clubs loaded | Players with minutes |
+|---|---|---|
+| Premier League | 20 / 20 | 552 |
+| La Liga | 7 / 20 | 210 |
+| Serie A, Bundesliga, Ligue 1, Eredivisie, Primeira Liga, Brasileirão | 0 | 0 (pending quota) |
+
+- 1,369 source players (including squad members without minutes); all resolved to canonical
+  IDs. The integrity check passes.
+- **Known gap:** 7 of the 27 clubs loaded so far have more than 60 registered players (4 squad
+  pages), and the free plan can't read page 4: Man Utd, Liverpool, Tottenham, Nottingham Forest,
+  Atlético, Sevilla, Villarreal. The missing players are mostly youth or loan registrations
+  (the order of the last page is unknown). The ETL counts these clubs in `truncated_clubs`.
+- Estimated time to complete: about 52 requests per league-season, so 8 leagues × 3 seasons is
+  about 1,250 requests, or about 14 days at 90 per day.
 
 ## 4. ID matching (precision/recall)
 

@@ -127,7 +127,7 @@ class SearchForm {
             .catch(error => {
                 this.setLoading(false);
                 console.error('Search error:', error);
-                this.showError(error.message || 'Failed to connect to the API. Start it with: uv run uvicorn wescout.api.main:app --port 5000');
+                this.showError(error.message || 'Failed to connect to the API. Start it with: uv run uvicorn wescout.api.main:app --port 5050');
                 
                 // Fallback to mock data if API fails
                 console.log('Using mock data as fallback...');

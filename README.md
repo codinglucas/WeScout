@@ -41,7 +41,7 @@ flowchart LR
 uv sync                                   # Python ≥ 3.12, pinned via uv.lock
 cp .env.example .env                      # add API_FOOTBALL_KEY
 uv run python -m wescout.etl --seasons 2023            # resumable; re-run daily on the free plan
-uv run uvicorn wescout.api.main:app --port 5000        # API + frontend at http://localhost:5000
+uv run uvicorn wescout.api.main:app --port 5050        # API + frontend at http://localhost:5050
 ```
 
 ### ETL
@@ -70,7 +70,7 @@ run prints a JSON summary: records, runtime, requests used and quota left.
 | `GET /api/positions` | position codes used by the frontend |
 | `GET /api/health` | status + whether public mode is on |
 
-Interactive docs at `/docs`.
+Interactive docs at `/docs`. (On macOS, port 5000 is taken by AirPlay Receiver, so use another port; the frontend calls the API on the same origin.)
 
 ### Tests and checks
 
@@ -104,7 +104,7 @@ Full method in [`docs/benchmarks.md`](docs/benchmarks.md).
 
 | Metric | Before (Flask + live scraping) | After (FastAPI + DuckDB) |
 |---|---|---|
-| Search latency | ~3 min estimated (endpoint actually returned HTTP 500) | see benchmarks |
+| Search latency | ~3 min estimated (endpoint actually returned HTTP 500) | **~6 ms** median, < 7 ms p95 |
 | Third-party requests per search | ~200–300 | 0 |
 | ID matching (21 labelled pairs) | regex on page text | precision 1.00, recall 0.81 |
 
